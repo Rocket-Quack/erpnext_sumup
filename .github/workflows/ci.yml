@@ -5,7 +5,11 @@ on:
   push:
     branches:
       - develop
+      - version-15
   pull_request:
+    branches:
+      - develop
+      - version-15
 
 concurrency:
   group: develop-erpnext_sumup-${{ github.event.number }}
@@ -47,7 +51,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.12'
 
       - name: Setup Node
         uses: actions/setup-node@v3
@@ -76,31 +80,41 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-yarn-
 
+      - name: Update Package Repository
+        run: sudo apt update
+
       - name: Install MariaDB Client
-        run: sudo apt-get install mariadb-client-10.6
+        run: sudo apt-get install mariadb-client
 
       - name: Setup
         run: |
           pip install frappe-bench
-          bench init --skip-redis-config-generation --skip-assets --python "$(which python)" ~/frappe-bench
+          bench init --frappe-branch version-15 --skip-redis-config-generation --skip-assets --python "$(which python)" ~/frappe-bench
           mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL character_set_server = 'utf8mb4'"
           mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL collation_server = 'utf8mb4_unicode_ci'"
 
       - name: Install
         working-directory: /home/runner/frappe-bench
         run: |
+          bench get-app --branch version-15 erpnext
           bench get-app erpnext_sumup $GITHUB_WORKSPACE
           bench setup requirements --dev
           bench new-site --db-root-password root --admin-password admin test_site
+          bench --site test_site install-app erpnext
           bench --site test_site install-app erpnext_sumup
           bench build
         env:
           CI: 'Yes'
+          
+      - name: Migrate 
+        working-directory: /home/runner/frappe-bench
+        run: |
+          bench --site test_site migrate
 
       - name: Run Tests
         working-directory: /home/runner/frappe-bench
         run: |
           bench --site test_site set-config allow_tests true
-          bench --site test_site run-tests --app erpnext_sumup
+          bench --site test_site run-tests --app erpnext_sumup --skip-test-records
         env:
           TYPE: server
