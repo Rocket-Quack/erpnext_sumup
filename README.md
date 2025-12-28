@@ -39,6 +39,12 @@ Sobald ERPNext installiert ist wird die App mittels des folgenden Befehl zur Ben
 bench get-app https://github.com/Rocket-Quack/erpnext_sumup.git --branch version-15
 ```
 
+Benötigte Module und Requirements installieren
+```bash
+bench setup requirements
+```
+
+
 Anschließend kann die App für eine Seite installiert werden.
 ```bash
 bench --site yoursite.com install-app erpnext_sumup

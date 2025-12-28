@@ -7,7 +7,8 @@
  "field_order": [
   "enabled",
   "section_break_ntnx",
-  "api_key"
+  "api_key",
+  "merchant_code"
  ],
  "fields": [
   {
@@ -24,13 +25,19 @@
    "fieldname": "api_key",
    "fieldtype": "Password",
    "label": "API Key"
+  },
+  {
+   "fieldname": "merchant_code",
+   "fieldtype": "Data",
+   "label": "Merchant Code",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-12-28 17:49:47.606311",
+ "modified": "2025-12-28 19:22:06.715266",
  "modified_by": "Administrator",
  "module": "ERPNext SumUp",
  "name": "SumUp Settings",
