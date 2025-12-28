@@ -6,7 +6,9 @@ from frappe import _
 from frappe.model.document import Document
 
 from erpnext_sumup.erpnext_sumup.integrations.sumup_client import (
-	fetch_merchant_code,
+	fetch_merchant_code as fetch_sumup_merchant_code,
+)
+from erpnext_sumup.erpnext_sumup.integrations.sumup_client import (
 	normalize_api_key,
 )
 
@@ -23,14 +25,17 @@ class SumUpSettings(Document):
 		if previous and previous.enabled:
 			return
 
-		self.merchant_code = fetch_merchant_code(api_key=self.get_password("api_key"))
+		if (self.merchant_code or "").strip():
+			return
+
+		self.merchant_code = fetch_sumup_merchant_code(api_key=self.get_password("api_key"))
 
 	@frappe.whitelist()
-	def test_connection(self, api_key=None):
+	def fetch_merchant_code(self, api_key=None):
 		api_key = normalize_api_key(api_key) or self.get_password("api_key")
-		merchant_code = fetch_merchant_code(api_key=api_key)
+		merchant_code = fetch_sumup_merchant_code(api_key=api_key)
 		self.db_set("merchant_code", merchant_code)
 		return {
 			"merchant_code": merchant_code,
-			"message": _("Connection successful."),
+			"message": _("Merchant code updated."),
 		}

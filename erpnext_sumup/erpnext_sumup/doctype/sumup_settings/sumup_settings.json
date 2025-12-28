@@ -29,8 +29,7 @@
   {
    "fieldname": "merchant_code",
    "fieldtype": "Data",
-   "label": "Merchant Code",
-   "read_only": 1
+   "label": "Merchant Code"
   }
  ],
  "grid_page_length": 50,
