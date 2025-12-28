@@ -53,6 +53,10 @@ Es wird **weder von SumUp betrieben, unterstützt noch empfohlen**.
 
 Die Nennung von SumUp erfolgt ausschließlich zur **Beschreibung der technischen Kompatibilität bzw. Integration** mit den entsprechenden Diensten.
 
+## Third-Party
+
+This app uses the Python package `sumup` v0.0.16 (tag v0.0.16). See `THIRD_PARTY_NOTICE.md`.
+
 ## License
 
 Copyright (C) 2025 RocketQuackIT
