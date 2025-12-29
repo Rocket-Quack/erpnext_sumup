@@ -17,6 +17,12 @@ fixtures = [
 			["name", "in", ["SumUp Integration"]],
 		],
 	},
+	{
+		"doctype": "Number Card",
+		"filters": [
+			["name", "in", ["SumUp Terminals"]],
+		],
+	},
 ]
 
 
@@ -158,23 +164,11 @@ fixtures = [
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"erpnext_sumup.tasks.all"
-# 	],
-# 	"daily": [
-# 		"erpnext_sumup.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"erpnext_sumup.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"erpnext_sumup.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"erpnext_sumup.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+	"hourly": [
+		"erpnext_sumup.erpnext_sumup.doctype.sumup_terminal.sumup_terminal.refresh_terminal_statuses_hourly",
+	],
+}
 
 # Testing
 # -------
@@ -256,4 +250,3 @@ fixtures = [
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
-
