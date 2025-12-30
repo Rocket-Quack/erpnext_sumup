@@ -99,7 +99,8 @@ fixtures = [
 # ------------
 
 # before_install = "erpnext_sumup.install.before_install"
-# after_install = "erpnext_sumup.install.after_install"
+after_install = "erpnext_sumup.install.after_install"
+after_migrate = "erpnext_sumup.install.after_migrate"
 
 # Uninstallation
 # ------------
@@ -161,6 +162,11 @@ fixtures = [
 # 	}
 # }
 
+doc_events = {
+	"POS Profile": {
+		"validate": "erpnext_sumup.erpnext_sumup.pos.pos_profile.validate_pos_profile_sumup_terminal",
+	},
+}
 # Scheduled Tasks
 # ---------------
 
