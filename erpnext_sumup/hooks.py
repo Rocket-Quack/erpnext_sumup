@@ -42,7 +42,7 @@ fixtures = [
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/erpnext_sumup/css/erpnext_sumup.css"
-# app_include_js = "/assets/erpnext_sumup/js/erpnext_sumup.js"
+# app_include_js = "/assets/erpnext_sumup/js/pos_invoice_sumup.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/erpnext_sumup/css/erpnext_sumup.css"
@@ -56,7 +56,7 @@ fixtures = [
 # webform_include_css = {"doctype": "public/css/doctype.css"}
 
 # include js in page
-# page_js = {"page" : "public/js/file.js"}
+page_js = {"point-of-sale": "public/js/pos_invoice_sumup.js"}
 
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
@@ -168,6 +168,7 @@ doc_events = {
 	},
 	"POS Invoice": {
 		"validate": "erpnext_sumup.erpnext_sumup.pos.pos_invoice.validate_pos_invoice_sumup_currency",
+		"before_submit": "erpnext_sumup.erpnext_sumup.pos.pos_invoice.validate_pos_invoice_sumup_payment_status",
 	},
 }
 # Scheduled Tasks
