@@ -34,6 +34,42 @@ def create_custom_fields_for_erpnext():
 				in_list_view=1,
 			),
 		],
+		"POS Invoice": [
+			dict(
+				fieldname="sumup_status",
+				label="SumUp Status",
+				fieldtype="Select",
+				options="PENDING\nSUCCESSFUL\nFAILED\nCANCELLED",
+				insert_after="payments",
+				read_only=1,
+				hidden=1,
+			),
+			dict(
+				fieldname="sumup_client_transaction_id",
+				label="SumUp Client Transaction ID",
+				fieldtype="Data",
+				insert_after="sumup_status",
+				read_only=1,
+				hidden=1,
+			),
+			dict(
+				fieldname="sumup_amount",
+				label="SumUp Amount",
+				fieldtype="Currency",
+				options="currency",
+				insert_after="sumup_client_transaction_id",
+				read_only=1,
+				hidden=1,
+			),
+			dict(
+				fieldname="sumup_currency",
+				label="SumUp Currency",
+				fieldtype="Data",
+				insert_after="sumup_amount",
+				read_only=1,
+				hidden=1,
+			),
+		],
 	}
 
 	create_custom_fields(custom_fields, ignore_validate=True)
