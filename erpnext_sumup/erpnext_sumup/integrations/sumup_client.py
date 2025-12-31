@@ -37,7 +37,7 @@ def get_sumup_client(*, require_enabled: bool = True) -> Sumup:
 	return Sumup(api_key=api_key)
 
 
-def fetch_merchant_profile(*, api_key=None):
+def fetch_merchant_profile(*, api_key=None, merchant_code=None):
 	api_key = normalize_api_key(api_key)
 	if not api_key:
 		api_key = get_sumup_settings().get_password("api_key")
@@ -45,36 +45,24 @@ def fetch_merchant_profile(*, api_key=None):
 	if not api_key:
 		frappe.throw(_("SumUp API key is missing in SumUp Settings."))
 
+	merchant_code = (merchant_code or "").strip()
+	if not merchant_code:
+		frappe.throw(_("Merchant code is required in SumUp Settings."))
+
 	client = Sumup(api_key=api_key)
 
-	merchant_resource = getattr(client, "merchant", None)
-	if merchant_resource is not None:
-		method = getattr(merchant_resource, "get", None)
-		if callable(method):
-			try:
-				return method()
-			except Exception as exc:
-				frappe.throw(_("SumUp API error: {0}").format(exc))
+	merchants_resource = getattr(client, "merchants", None)
+	if merchants_resource is None:
+		frappe.throw(_("SumUp client does not expose a merchants endpoint."))
 
-		method = getattr(merchant_resource, "get_merchant_profile", None)
-		if callable(method):
-			try:
-				return method()
-			except Exception as exc:
-				frappe.throw(_("SumUp API error: {0}").format(exc))
+	method = getattr(merchants_resource, "get", None)
+	if not callable(method):
+		frappe.throw(_("SumUp client does not expose a merchants endpoint."))
 
-	for method_name in ("get_merchant_profile", "get_profile"):
-		method = getattr(client, method_name, None)
-		if not callable(method):
-			continue
-		try:
-			return method()
-		except TypeError:
-			continue
-		except Exception as exc:
-			frappe.throw(_("SumUp API error: {0}").format(exc))
-
-	frappe.throw(_("SumUp client does not expose a merchant profile endpoint."))
+	try:
+		return method(merchant_code)
+	except Exception as exc:
+		frappe.throw(_("SumUp API error: {0}").format(exc))
 
 
 def extract_merchant_code(profile):
@@ -173,8 +161,8 @@ def extract_merchant_currency(profile):
 	return None
 
 
-def fetch_merchant_code(*, api_key=None):
-	profile = fetch_merchant_profile(api_key=api_key)
+def fetch_merchant_code(*, api_key=None, merchant_code=None):
+	profile = fetch_merchant_profile(api_key=api_key, merchant_code=merchant_code)
 	merchant_code = extract_merchant_code(profile)
 	if not merchant_code:
 		frappe.throw(_("Merchant code not found in SumUp response."))

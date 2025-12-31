@@ -4,10 +4,8 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cint
 
 from erpnext_sumup.erpnext_sumup.integrations.sumup_client import (
-	extract_merchant_code,
 	extract_merchant_currency,
 	normalize_api_key,
 )
@@ -37,40 +35,23 @@ class SumUpSettings(Document):
 		if not self.enabled:
 			return
 
-		previous = self.get_doc_before_save()
-		if previous and previous.enabled:
-			return
-
-		if (self.merchant_code or "").strip():
-			return
-
-		profile = fetch_sumup_merchant_profile(api_key=self.get_password("api_key"))
-		merchant_code = extract_merchant_code(profile)
-		if not merchant_code:
-			frappe.throw(_("Merchant code not found in SumUp response."))
-
-		self.merchant_code = merchant_code
-		merchant_currency = extract_merchant_currency(profile)
-		if merchant_currency:
-			self.merchant_currency = merchant_currency
+		if not (self.merchant_code or "").strip():
+			frappe.throw(_("Merchant code is required in SumUp Settings."))
 
 	@frappe.whitelist()
 	def fetch_merchant_code(self, api_key=None, force=0):
 		api_key = normalize_api_key(api_key) or self.get_password("api_key")
-		existing_code = (self.merchant_code or "").strip()
-		if existing_code and not cint(force):
-			return {
-				"merchant_code": existing_code,
-				"merchant_currency": self.merchant_currency,
-				"message": _("Merchant code already set. Clear it to fetch again."),
-			}
+		if not api_key:
+			frappe.throw(_("SumUp API key is missing in SumUp Settings."))
 
-		profile = fetch_sumup_merchant_profile(api_key=api_key)
-		merchant_code = extract_merchant_code(profile)
+		merchant_code = (self.merchant_code or "").strip()
 		if not merchant_code:
-			frappe.throw(_("Merchant code not found in SumUp response."))
+			frappe.throw(_("Merchant code is required in SumUp Settings."))
 
-		self.db_set("merchant_code", merchant_code)
+		profile = fetch_sumup_merchant_profile(
+			api_key=api_key,
+			merchant_code=merchant_code,
+		)
 		merchant_currency = extract_merchant_currency(profile)
 		if merchant_currency:
 			self.db_set("merchant_currency", merchant_currency)
@@ -78,7 +59,7 @@ class SumUpSettings(Document):
 		return {
 			"merchant_code": merchant_code,
 			"merchant_currency": merchant_currency,
-			"message": _("Merchant code updated."),
+			"message": _("Merchant code validated."),
 		}
 
 	@frappe.whitelist()
@@ -87,16 +68,21 @@ class SumUpSettings(Document):
 		if not api_key:
 			frappe.throw(_("SumUp API key is missing in SumUp Settings."))
 
-		profile = fetch_sumup_merchant_profile(api_key=api_key)
-		merchant_code = extract_merchant_code(profile)
+		merchant_code = (self.merchant_code or "").strip()
+		if not merchant_code:
+			frappe.throw(_("Merchant code is required in SumUp Settings."))
+
+		profile = fetch_sumup_merchant_profile(
+			api_key=api_key,
+			merchant_code=merchant_code,
+		)
 		merchant_currency = extract_merchant_currency(profile)
 
 		if merchant_currency:
 			self.db_set("merchant_currency", merchant_currency)
 
 		message = _("Connection successful.")
-		if merchant_code:
-			message = _("Connection successful. Merchant code: {0}").format(merchant_code)
+		message = _("Connection successful. Merchant code: {0}").format(merchant_code)
 
 		return {
 			"merchant_code": merchant_code,

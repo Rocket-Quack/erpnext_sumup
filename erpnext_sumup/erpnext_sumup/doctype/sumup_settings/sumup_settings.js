@@ -14,7 +14,6 @@ const update_settings_buttons = (frm) => {
 			freeze: true,
 			freeze_message: __("Testing connection..."),
 			callback: (response) => {
-				const merchant_code = response.message && response.message.merchant_code;
 				const merchant_currency = response.message && response.message.merchant_currency;
 				const message = response.message && response.message.message;
 
@@ -31,7 +30,7 @@ const update_settings_buttons = (frm) => {
 		return;
 	}
 
-	frm.add_custom_button(__("Fetch Merchant Code"), () => {
+	frm.add_custom_button(__("Validate Merchant Code"), () => {
 		frm.call({
 			doc: frm.doc,
 			method: "fetch_merchant_code",
@@ -39,20 +38,16 @@ const update_settings_buttons = (frm) => {
 				api_key: frm.doc.api_key,
 			},
 			freeze: true,
-			freeze_message: __("Fetching merchant code..."),
+			freeze_message: __("Validating merchant code..."),
 			callback: (response) => {
-				const merchant_code = response.message && response.message.merchant_code;
 				const merchant_currency = response.message && response.message.merchant_currency;
 				const message = response.message && response.message.message;
 
-				if (merchant_code) {
-					frm.set_value("merchant_code", merchant_code);
-				}
 				if (merchant_currency) {
 					frm.set_value("merchant_currency", merchant_currency);
 				}
 
-				frappe.msgprint(message || __("Merchant code updated."));
+				frappe.msgprint(message || __("Merchant code validated."));
 			},
 		});
 	});
