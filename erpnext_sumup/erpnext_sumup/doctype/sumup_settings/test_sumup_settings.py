@@ -5,6 +5,7 @@ from frappe.tests.utils import FrappeTestCase
 
 from erpnext_sumup.erpnext_sumup.integrations.sumup_client import (
 	extract_merchant_code,
+	extract_merchant_currency,
 	normalize_api_key,
 )
 
@@ -44,3 +45,32 @@ class TestSumUpSettings(FrappeTestCase):
 	def test_extract_merchant_code_missing(self):
 		self.assertIsNone(extract_merchant_code({}))
 		self.assertIsNone(extract_merchant_code(object()))
+
+	def test_extract_merchant_currency_from_dict(self):
+		self.assertEqual(extract_merchant_currency({"currency": "EUR"}), "EUR")
+		self.assertEqual(extract_merchant_currency({"currency_code": "USD"}), "USD")
+		self.assertEqual(
+			extract_merchant_currency({"merchant_profile": {"currency": "GBP"}}),
+			"GBP",
+		)
+
+	def test_extract_merchant_currency_from_objects(self):
+		class Profile:
+			def __init__(self, currency):
+				self.currency = currency
+
+		class NestedProfile:
+			def __init__(self, currency_code):
+				self.merchant_profile = Profile(currency_code)
+
+		class DumpProfile:
+			def model_dump(self):
+				return {"merchant_profile": {"default_currency": "CHF"}}
+
+		self.assertEqual(extract_merchant_currency(Profile("EUR")), "EUR")
+		self.assertEqual(extract_merchant_currency(NestedProfile("SEK")), "SEK")
+		self.assertEqual(extract_merchant_currency(DumpProfile()), "CHF")
+
+	def test_extract_merchant_currency_missing(self):
+		self.assertIsNone(extract_merchant_currency({}))
+		self.assertIsNone(extract_merchant_currency(object()))

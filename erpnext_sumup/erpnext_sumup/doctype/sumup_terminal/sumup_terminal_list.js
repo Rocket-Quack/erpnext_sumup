@@ -2,33 +2,50 @@
 // For license information, please see license.txt
 
 const open_pairing_dialog = (listview) => {
+	const fields = [
+		{
+			fieldname: "pairing_code",
+			fieldtype: "Data",
+			label: __("API Code"),
+			reqd: 1,
+			description: __(
+				"Shown on the terminal under Connections > API > Connect (8-9 letters/numbers)."
+			),
+		},
+		{
+			fieldname: "terminal_name",
+			fieldtype: "Data",
+			label: __("Terminal Name"),
+			reqd: 1,
+		},
+	];
+
+	if (listview && listview.sumup_debug_enabled) {
+		fields.push({
+			fieldname: "merchant_code",
+			fieldtype: "Data",
+			label: __("Merchant Code Override"),
+			description: __("Optional: use a different merchant code for this pairing only."),
+		});
+	}
+
 	const dialog = new frappe.ui.Dialog({
 		title: __("Pair SumUp Terminal"),
-		fields: [
-			{
-				fieldname: "pairing_code",
-				fieldtype: "Data",
-				label: __("API Code"),
-				reqd: 1,
-				description: __(
-					"Shown on the terminal under Connections > API > Connect (8-9 letters/numbers)."
-				),
-			},
-			{
-				fieldname: "terminal_name",
-				fieldtype: "Data",
-				label: __("Terminal Name"),
-				reqd: 1,
-			},
-		],
+		fields,
 		primary_action_label: __("Pair"),
 		primary_action: (values) => {
+			const args = {
+				pairing_code: values.pairing_code,
+				terminal_name: values.terminal_name,
+			};
+
+			if (values.merchant_code) {
+				args.merchant_code = values.merchant_code;
+			}
+
 			frappe.call({
 				method: "erpnext_sumup.erpnext_sumup.doctype.sumup_terminal.sumup_terminal.pair_terminal_and_create",
-				args: {
-					pairing_code: values.pairing_code,
-					terminal_name: values.terminal_name,
-				},
+				args,
 				freeze: true,
 				freeze_message: __("Pairing terminal..."),
 				callback: (response) => {
@@ -39,7 +56,14 @@ const open_pairing_dialog = (listview) => {
 						frappe.set_route("Form", "SumUp Terminal", result.docname);
 					}
 
-					frappe.msgprint(result.message || __("Terminal paired."));
+					let message = result.message || __("Terminal paired.");
+					if (result.merchant_code) {
+						message += `<br><br><strong>${__(
+							"Merchant Code Used"
+						)}</strong>: ${frappe.utils.escape_html(result.merchant_code)}`;
+					}
+
+					frappe.msgprint(message);
 					dialog.hide();
 				},
 			});
@@ -186,7 +210,14 @@ const format_activity_status = (value) => {
 
 const show_status_message = (result) => {
 	const message = result.message || __("Status updated.");
-	const details = result.debug_details || [];
+	const debugEnabled = result.debug_enabled;
+	let details = result.debug_details || [];
+	if (!details.length && debugEnabled && result.failed && result.failed.length) {
+		details = result.failed.map((item) => ({
+			name: item.name,
+			error: item.error,
+		}));
+	}
 
 	if (!details.length) {
 		frappe.msgprint(message);
@@ -246,9 +277,39 @@ const remove_selected_terminals = (listview) => {
 	);
 };
 
+const force_remove_selected_terminals = (listview) => {
+	const terminal_names = get_selected_terminal_names(listview);
+	if (!terminal_names.length) {
+		frappe.msgprint(__("Select at least one terminal."));
+		return;
+	}
+
+	frappe.confirm(
+		__("Remove {0} terminal(s) locally only? This does not remove the terminal in SumUp.", [
+			terminal_names.length,
+		]),
+		() => {
+			frappe.call({
+				method: "erpnext_sumup.erpnext_sumup.doctype.sumup_terminal.sumup_terminal.force_remove_terminals",
+				args: {
+					terminal_names,
+				},
+				freeze: true,
+				freeze_message: __("Removing terminals locally..."),
+				callback: (response) => {
+					const result = response.message || {};
+					listview.refresh();
+					show_status_message(result);
+				},
+			});
+		}
+	);
+};
+
 frappe.listview_settings["SumUp Terminal"] = {
 	add_fields: ["connection_status", "online_status", "activity_status"],
 	onload(listview) {
+		listview.sumup_debug_enabled = false;
 		const refresh_action = () => {
 			const terminal_names = get_selected_terminal_names(listview);
 			refresh_terminal_statuses(listview, terminal_names.length ? terminal_names : null);
@@ -275,6 +336,20 @@ frappe.listview_settings["SumUp Terminal"] = {
 		listview.page.add_actions_menu_item(__("Remove from SumUp"), () => {
 			remove_selected_terminals(listview);
 		});
+
+		frappe.db
+			.get_value("SumUp Settings", "SumUp Settings", "enable_debug_logging")
+			.then((response) => {
+				const enabled = cint(response.message && response.message.enable_debug_logging);
+				listview.sumup_debug_enabled = !!enabled;
+				if (!enabled) {
+					return;
+				}
+
+				listview.page.add_inner_button(__("Force Remove (Local Only)"), () => {
+					force_remove_selected_terminals(listview);
+				});
+			});
 	},
 	get_indicator: get_status_indicator,
 	formatters: {

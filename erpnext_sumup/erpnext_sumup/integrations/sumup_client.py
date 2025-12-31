@@ -113,6 +113,66 @@ def extract_merchant_code(profile):
 	return None
 
 
+def extract_merchant_currency(profile):
+	if profile is None:
+		return None
+
+	currency = getattr(profile, "currency", None) or getattr(profile, "currency_code", None)
+	if currency:
+		return currency
+
+	merchant_profile = getattr(profile, "merchant_profile", None)
+	if merchant_profile:
+		if isinstance(merchant_profile, dict):
+			currency = (
+				merchant_profile.get("currency")
+				or merchant_profile.get("currency_code")
+				or merchant_profile.get("currencyCode")
+				or merchant_profile.get("default_currency")
+				or merchant_profile.get("defaultCurrency")
+			)
+			if currency:
+				return currency
+		else:
+			currency = (
+				getattr(merchant_profile, "currency", None)
+				or getattr(merchant_profile, "currency_code", None)
+				or getattr(merchant_profile, "currencyCode", None)
+				or getattr(merchant_profile, "default_currency", None)
+				or getattr(merchant_profile, "defaultCurrency", None)
+			)
+			if currency:
+				return currency
+
+	if hasattr(profile, "model_dump"):
+		return extract_merchant_currency(profile.model_dump())
+
+	if not isinstance(profile, dict):
+		return None
+
+	currency = (
+		profile.get("currency")
+		or profile.get("currency_code")
+		or profile.get("currencyCode")
+		or profile.get("default_currency")
+		or profile.get("defaultCurrency")
+	)
+	if currency:
+		return currency
+
+	merchant_profile = profile.get("merchant_profile")
+	if isinstance(merchant_profile, dict):
+		return (
+			merchant_profile.get("currency")
+			or merchant_profile.get("currency_code")
+			or merchant_profile.get("currencyCode")
+			or merchant_profile.get("default_currency")
+			or merchant_profile.get("defaultCurrency")
+		)
+
+	return None
+
+
 def fetch_merchant_code(*, api_key=None):
 	profile = fetch_merchant_profile(api_key=api_key)
 	merchant_code = extract_merchant_code(profile)

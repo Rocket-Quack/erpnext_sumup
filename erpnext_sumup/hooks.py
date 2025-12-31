@@ -166,6 +166,9 @@ doc_events = {
 	"POS Profile": {
 		"validate": "erpnext_sumup.erpnext_sumup.pos.pos_profile.validate_pos_profile_sumup_terminal",
 	},
+	"POS Invoice": {
+		"validate": "erpnext_sumup.erpnext_sumup.pos.pos_invoice.validate_pos_invoice_sumup_currency",
+	},
 }
 # Scheduled Tasks
 # ---------------

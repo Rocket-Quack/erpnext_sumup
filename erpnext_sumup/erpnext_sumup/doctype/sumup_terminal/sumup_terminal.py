@@ -247,6 +247,21 @@ def _get_status_context(*, throw_on_missing: bool = True):
 	return get_sumup_client(require_enabled=False), merchant_code
 
 
+def _get_linked_pos_profiles(terminal_name: str | None) -> list[str]:
+	if not terminal_name:
+		return []
+
+	try:
+		meta = frappe.get_meta("POS Profile")
+	except Exception:
+		return []
+
+	if not meta.has_field("sumup_terminal"):
+		return []
+
+	return frappe.get_all("POS Profile", filters={"sumup_terminal": terminal_name}, pluck="name")
+
+
 def _fetch_terminal_status_payload(client, merchant_code: str, terminal_id: str) -> dict:
 	status_response = client.readers.show_reader_status(merchant_code, terminal_id)
 	return _extract_status_payload(status_response)
@@ -307,7 +322,12 @@ def _update_terminal_statuses(client, merchant_code: str, terminal: dict, reader
 
 
 @frappe.whitelist()
-def pair_terminal(*, pairing_code: str | None = None, terminal_name: str | None = None):
+def pair_terminal(
+	*,
+	pairing_code: str | None = None,
+	terminal_name: str | None = None,
+	merchant_code: str | None = None,
+):
 	code = _normalize_pairing_code(pairing_code)
 	name = _normalize_terminal_name(terminal_name)
 
@@ -315,9 +335,16 @@ def pair_terminal(*, pairing_code: str | None = None, terminal_name: str | None 
 	if not settings.enabled:
 		frappe.throw(_("SumUp is disabled in settings."))
 
-	merchant_code = (settings.merchant_code or "").strip()
-	if not merchant_code:
-		frappe.throw(_("Merchant code is missing in SumUp Settings."))
+	debug_enabled = bool(getattr(settings, "enable_debug_logging", 0))
+	override_code = (merchant_code or "").strip()
+	if override_code:
+		if not debug_enabled:
+			frappe.throw(_("Merchant code override is only available when debugging is enabled."))
+		merchant_code = override_code
+	else:
+		merchant_code = (settings.merchant_code or "").strip()
+		if not merchant_code:
+			frappe.throw(_("Merchant code is missing in SumUp Settings."))
 
 	client = get_sumup_client(require_enabled=False)
 
@@ -354,16 +381,22 @@ def pair_terminal(*, pairing_code: str | None = None, terminal_name: str | None 
 	return {
 		"reader_id": reader_id,
 		"status": status,
+		"merchant_code": merchant_code if debug_enabled else None,
 		"message": _("Terminal paired."),
 	}
 
 
 @frappe.whitelist()
-def pair_terminal_and_create(*, pairing_code: str | None = None, terminal_name: str | None = None):
+def pair_terminal_and_create(
+	*,
+	pairing_code: str | None = None,
+	terminal_name: str | None = None,
+	merchant_code: str | None = None,
+):
 	code = _normalize_pairing_code(pairing_code)
 	name = _normalize_terminal_name(terminal_name)
 
-	result = pair_terminal(pairing_code=code, terminal_name=name)
+	result = pair_terminal(pairing_code=code, terminal_name=name, merchant_code=merchant_code)
 	reader_id = result.get("reader_id")
 	status = result.get("status")
 	if not reader_id:
@@ -440,6 +473,7 @@ def refresh_terminal_statuses(*, terminal_names=None, throw_on_missing: bool = T
 		return {
 			"updated": [],
 			"failed": [],
+			"debug_enabled": debug_enabled,
 			"message": _("SumUp is disabled or missing credentials."),
 		}
 
@@ -517,6 +551,7 @@ def refresh_terminal_statuses(*, terminal_names=None, throw_on_missing: bool = T
 		"updated": updated,
 		"failed": failed,
 		"debug_details": debug_details,
+		"debug_enabled": debug_enabled,
 		"message": message,
 	}
 
@@ -548,6 +583,14 @@ def remove_terminals(*, terminal_names=None):
 
 	for terminal in terminals:
 		try:
+			linked_profiles = _get_linked_pos_profiles(terminal.get("name"))
+			if linked_profiles:
+				frappe.throw(
+					_("Cannot remove terminal {0} because it is linked to POS Profile(s): {1}.").format(
+						terminal.get("name"), ", ".join(linked_profiles)
+					)
+				)
+
 			client.readers.delete(merchant_code, terminal.get("terminal_id"))
 			frappe.delete_doc("SumUp Terminal", terminal.get("name"))
 			removed.append({"name": terminal.get("name")})
@@ -565,5 +608,60 @@ def remove_terminals(*, terminal_names=None):
 		"removed": removed,
 		"failed": failed,
 		"debug_details": debug_details,
+		"debug_enabled": debug_enabled,
+		"message": message,
+	}
+
+
+@frappe.whitelist()
+def force_remove_terminals(*, terminal_names=None):
+	names = _parse_terminal_names(terminal_names)
+	if not names:
+		frappe.throw(_("Select terminals to remove."))
+
+	terminals = frappe.get_all(
+		"SumUp Terminal",
+		filters={"name": ["in", names]},
+		fields=["name", "terminal_id"],
+	)
+
+	if not terminals:
+		frappe.throw(_("No terminals found."))
+
+	debug_enabled = bool(getattr(get_sumup_settings(), "enable_debug_logging", 0))
+	removed = []
+	failed = []
+	debug_details = []
+
+	for terminal in terminals:
+		try:
+			linked_profiles = _get_linked_pos_profiles(terminal.get("name"))
+			if linked_profiles:
+				frappe.throw(
+					_("Cannot remove terminal {0} because it is linked to POS Profile(s): {1}.").format(
+						terminal.get("name"), ", ".join(linked_profiles)
+					)
+				)
+
+			frappe.delete_doc("SumUp Terminal", terminal.get("name"))
+			removed.append({"name": terminal.get("name")})
+		except Exception as exc:
+			error_text = _format_sumup_error(exc) if debug_enabled else str(exc)
+			failed.append({"name": terminal.get("name"), "error": error_text})
+			if debug_enabled:
+				debug_details.append({"name": terminal.get("name"), "error": error_text})
+
+	message = _("Removed {0} terminal(s) locally.").format(len(removed))
+	if failed:
+		message = _("Removed {0} terminal(s) locally, {1} failed.").format(
+			len(removed),
+			len(failed),
+		)
+
+	return {
+		"removed": removed,
+		"failed": failed,
+		"debug_details": debug_details,
+		"debug_enabled": debug_enabled,
 		"message": message,
 	}

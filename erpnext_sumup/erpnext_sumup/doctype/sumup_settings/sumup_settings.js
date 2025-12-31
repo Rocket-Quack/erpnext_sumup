@@ -15,7 +15,12 @@ const update_settings_buttons = (frm) => {
 			freeze_message: __("Testing connection..."),
 			callback: (response) => {
 				const merchant_code = response.message && response.message.merchant_code;
+				const merchant_currency = response.message && response.message.merchant_currency;
 				const message = response.message && response.message.message;
+
+				if (merchant_currency) {
+					frm.set_value("merchant_currency", merchant_currency);
+				}
 
 				frappe.msgprint(message || __("Connection successful."));
 			},
@@ -37,10 +42,14 @@ const update_settings_buttons = (frm) => {
 			freeze_message: __("Fetching merchant code..."),
 			callback: (response) => {
 				const merchant_code = response.message && response.message.merchant_code;
+				const merchant_currency = response.message && response.message.merchant_currency;
 				const message = response.message && response.message.message;
 
 				if (merchant_code) {
 					frm.set_value("merchant_code", merchant_code);
+				}
+				if (merchant_currency) {
+					frm.set_value("merchant_currency", merchant_currency);
 				}
 
 				frappe.msgprint(message || __("Merchant code updated."));

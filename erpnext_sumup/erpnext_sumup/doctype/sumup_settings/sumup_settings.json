@@ -9,6 +9,7 @@
   "section_break_ntnx",
   "api_key",
   "merchant_code",
+  "merchant_currency",
   "affiliate_key",
   "affiliate_app_id",
   "debugging_tab",
@@ -35,6 +36,12 @@
    "fieldname": "merchant_code",
    "fieldtype": "Data",
    "label": "Merchant Code"
+  },
+  {
+   "fieldname": "merchant_currency",
+   "fieldtype": "Data",
+   "label": "Merchant Currency",
+   "read_only": 1
   },
   {
    "fieldname": "affiliate_key",
