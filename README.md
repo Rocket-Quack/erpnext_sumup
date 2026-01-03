@@ -44,10 +44,14 @@ Benötigte Module und Requirements installieren
 bench setup requirements
 ```
 
-
 Anschließend kann die App für eine Seite installiert werden.
 ```bash
 bench --site yoursite.com install-app erpnext_sumup
+```
+
+Abschließend Migration ausführen
+```bash
+bench --site yoursite.com migrate
 ```
 
 ## Markenhinweis
