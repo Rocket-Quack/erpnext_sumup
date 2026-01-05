@@ -1,67 +1,104 @@
 <div align="center">
   <p>
-    <img src="docs/assets/SUMUP_INTEGRATION_APP_LOGO.png" alt="ERPNext SumUP Integration Logo" width="164"/>
+    <img src="docs/assets/SUMUP_INTEGRATION_APP_LOGO.png" alt="ERPNext SumUp Integration Logo" width="164"/>
   </p>
     <h1>SumUp ERPNext Integration <br> (WORK IN PROGRESS)</h1>
 </div>
 
-Diese App integriert SumUp-Kartenterminals in ERPNext und ermöglicht die direkte Verarbeitung von Kartenzahlungen innerhalb des Systems.
+This app integrates SumUp card terminals into ERPNext and allows card payments directly in the POS.
 
-Bei Auswahl von Kartenzahlungen wird der zu zahlende Betrag automatisch an ein SumUp-Terminal übertragen. Nach erfolgreicher Zahlung wird das Zahlungsergebnis an ERPNext zurückgemeldet
+When a card payment is selected, the amount is sent to a SumUp terminal. After a successful payment, the result is sent back to ERPNext.
 
-> **Markenhinweis:**
-> SumUp ist eine eingetragene Marke der SumUp Payments Limited.
-> Dieses Projekt steht in keiner Verbindung zu SumUp.
+> **Trademark notice:**
+> SumUp is a registered trademark of SumUp Payments Limited.
+> This project is not affiliated with SumUp.
 
 ## Supported Versions
 
-| ERPNext | Frappe | Support-Status |
+| ERPNext | Frappe | Support Status |
 |---------|--------|----------------|
-| v16 Beta    | v16 Beta   | ⚙️ Bald Verfügbar     |
-| v15     | v15    | ⚙️ Bald Verfügbar     |
+| v16 Beta | v16 Beta | Coming soon |
+| v15 | v15 | Coming soon |
+
+## Quick Setup (POS)
+
+1. Install the app (see installation sections below).
+2. Open **SumUp Settings**:
+   - Enable SumUp.
+   - Enter **API Key** and **Merchant Code**.
+   - Click **Test Connection** to fetch the merchant currency.
+3. Pair a terminal:
+   - Go to **SumUp Terminal** list.
+   - Click **Pair Terminal**.
+   - Enter the pairing code shown on the terminal and a name.
+4. Mark a payment method for SumUp:
+   - Open **POS Payment Method**.
+   - Enable **Use SumUp Terminal**.
+5. Assign the terminal in the POS Profile:
+   - Open **POS Profile**.
+   - Set **SumUp Terminal**.
+   - Ensure the SumUp payment method is listed in the profile.
+6. Use in POS:
+   - Select the SumUp payment method.
+   - Submit the POS invoice to start the payment on the terminal.
+
+Notes:
+- SumUp payments must cover the full invoice total.
+- The POS invoice currency must match the SumUp merchant currency.
+
+## Recovery Mode (Optional)
+
+If readers already exist in your SumUp account but are missing in ERPNext:
+
+1. Open **SumUp Settings** and enable **Recovery Mode**.
+2. Go to **SumUp Terminal** list view.
+3. Click **Recovery Sync** to fetch and sync terminals.
 
 ## Installation (Frappe Cloud)
 
-Die App kann direkt über die Frappe Cloud installiert werden:
+The app can be installed directly via Frappe Cloud:
 
-1. Öffne das Frappe Cloud Dashboard unter <https://frappecloud.com/dashboard/#/sites>
-2. Klicke auf **"New Site"**, um eine neue Instanz zu erstellen
-3. Im Schritt **„Select apps to install“**:
-   - Wähle die gewünschte Frappe-/ERPNext-Version aus  
-   - Aktiviere zusätzlich die App **`ERPNEXT SumUp`**
-4. Schließlich den Assistenten abschließen bis die Seite erstellt wurde
+1. Open the Frappe Cloud dashboard at <https://frappecloud.com/dashboard/#/sites>
+2. Click **"New Site"** to create a new site
+3. In the step **"Select apps to install"**:
+   - Choose the desired Frappe/ERPNext version
+   - Enable the app **`ERPNext SumUp`**
+4. Complete the wizard to create the site
 
 ## Installation (Self-Hosted)
 
-Sobald ERPNext installiert ist wird die App mittels des folgenden Befehl zur Bench Umgebung hinzugefügt.
+Once ERPNext is installed, add the app to your bench environment:
 
 ```bash
 bench get-app https://github.com/Rocket-Quack/erpnext_sumup.git --branch version-15
 ```
 
-Benötigte Module und Requirements installieren
+Install requirements:
+
 ```bash
 bench setup requirements
 ```
 
-Anschließend kann die App für eine Seite installiert werden.
+Install the app on a site:
+
 ```bash
 bench --site yoursite.com install-app erpnext_sumup
 ```
 
-Abschließend Migration ausführen
+Run migrations:
+
 ```bash
 bench --site yoursite.com migrate
 ```
 
-## Markenhinweis
+## Trademark Notice
 
-**SumUp** ist eine eingetragene Marke der **SumUp Payments Limited**.
+**SumUp** is a registered trademark of **SumUp Payments Limited**.
 
-Dieses Projekt ist eine **unabhängige und inoffizielle Integration** und steht **in keiner Verbindung zu SumUp**.
-Es wird **weder von SumUp betrieben, unterstützt noch empfohlen**.
+This project is an independent and unofficial integration and is not affiliated with SumUp.
+It is not operated, supported, or endorsed by SumUp.
 
-Die Nennung von SumUp erfolgt ausschließlich zur **Beschreibung der technischen Kompatibilität bzw. Integration** mit den entsprechenden Diensten.
+The name SumUp is used only to describe technical compatibility with the respective services.
 
 ## Third-Party
 
