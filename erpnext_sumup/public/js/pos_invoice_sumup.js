@@ -164,36 +164,55 @@
 	};
 
 	const sumup_render_steps = (dialog, states, message, indicator) => {
-		const steps = [
-			{ id: "start", label: __("Starting SumUp payment...") },
-			{ id: "wait", label: __("Waiting for card confirmation...") },
-			{ id: "done", label: __("Payment confirmed.") },
-		];
-		const icons = {
-			done: "[x]",
-			active: "...",
-			pending: "[ ]",
-			error: "!",
+		const status_defaults = {
+			starting: __("Starting SumUp payment..."),
+			waiting: __("Waiting for card confirmation..."),
+			success: __("Payment confirmed."),
+			error: __("SumUp payment failed."),
 		};
 
-		const html = steps
-			.map((step) => {
-				const state = states[step.id] || "pending";
-				const icon = icons[state] || icons.pending;
-				return `<div class="sumup-step"><span>${icon}</span> ${frappe.utils.escape_html(
-					step.label
-				)}</div>`;
-			})
-			.join("");
-
-		let message_html = "";
-		if (message) {
-			const safe_message = frappe.utils.escape_html(message);
-			const cls = indicator ? `text-${indicator}` : "text-muted";
-			message_html = `<div class="mt-3 ${cls}">${safe_message}</div>`;
+		let status = "waiting";
+		if (indicator === "success") {
+			status = "success";
+		} else if (indicator === "danger") {
+			status = "error";
+		} else if ((states || {}).start === "active") {
+			status = "starting";
 		}
 
-		dialog.fields_dict.sumup_status_html.$wrapper.html(`${html}${message_html}`);
+		const label = __("SumUp Payment");
+		const message_text = message || status_defaults[status] || "";
+
+		const spinner_html =
+			'<div class="sumup-status__spinner" role="img" aria-label="Loading"></div>';
+		const success_icon = `
+			<svg class="sumup-status__icon-svg" viewBox="0 0 64 64" aria-hidden="true">
+				<circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="6" />
+				<path d="M20 33 L28 41 L45 24" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+			</svg>`;
+		const error_icon = `
+			<svg class="sumup-status__icon-svg" viewBox="0 0 64 64" aria-hidden="true">
+				<circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="6" />
+				<path d="M22 22 L42 42 M42 22 L22 42" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" />
+			</svg>`;
+
+		let icon_html = spinner_html;
+		if (status === "success") {
+			icon_html = success_icon;
+		} else if (status === "error") {
+			icon_html = error_icon;
+		}
+
+		const html = `
+			<div class="sumup-status sumup-status--${status}">
+				<div class="sumup-status__icon">${icon_html}</div>
+				<div class="sumup-status__content">
+					<div class="sumup-status__label">${frappe.utils.escape_html(label)}</div>
+					<div class="sumup-status__message">${frappe.utils.escape_html(message_text)}</div>
+				</div>
+			</div>`;
+
+		dialog.fields_dict.sumup_status_html.$wrapper.html(html);
 	};
 
 	const sumup_stop_polling = (dialog) => {
