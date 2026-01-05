@@ -43,6 +43,12 @@ sequenceDiagram
     Cashier->>Frappe: submit POS Invoice
 ```
 
+## POS UI Screenshot
+
+![SumUp payment dialog in POS](../assets/Payment/POS_Payment.png)
+
+When the dialog appears, the SumUp terminal should display the same amount for confirmation. If the terminal does not show the amount, check the terminal connection status and the POS payment method configuration.
+
 ## Status Diagram (SumUp Status)
 
 ```mermaid
@@ -86,7 +92,3 @@ Custom fields (created in `erpnext_sumup/install.py`):
 - POS UI flow: `erpnext_sumup/public/js/pos_invoice_sumup.js`
 - Terminal management: `erpnext_sumup/erpnext_sumup/doctype/sumup_terminal/sumup_terminal.py`
 - Settings and validation: `erpnext_sumup/erpnext_sumup/doctype/sumup_settings/sumup_settings.py`
-
-## Rendering Note
-
-The diagrams use Mermaid. Make sure your Markdown renderer supports Mermaid.
