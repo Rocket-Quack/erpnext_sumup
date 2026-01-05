@@ -59,7 +59,7 @@ app_include_css = "/assets/erpnext_sumup/css/pos_invoice_sumup.css"
 page_js = {"point-of-sale": "public/js/pos_invoice_sumup.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {"POS Invoice": "public/js/pos_invoice_sumup_return.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -168,7 +168,11 @@ doc_events = {
 	},
 	"POS Invoice": {
 		"validate": "erpnext_sumup.erpnext_sumup.pos.pos_invoice.validate_pos_invoice_sumup_currency",
-		"before_submit": "erpnext_sumup.erpnext_sumup.pos.pos_invoice.validate_pos_invoice_sumup_payment_status",
+		"before_submit": [
+			"erpnext_sumup.erpnext_sumup.pos.pos_invoice.validate_pos_invoice_sumup_payment_status",
+			"erpnext_sumup.erpnext_sumup.pos.pos_invoice.validate_sumup_return_refund",
+		],
+		"on_submit": "erpnext_sumup.erpnext_sumup.pos.pos_invoice.trigger_sumup_return_refund",
 	},
 }
 # Scheduled Tasks

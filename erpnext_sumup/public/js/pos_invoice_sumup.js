@@ -397,6 +397,15 @@
 			return original_submit();
 		}
 
+		const isReturn = cint(frm.doc.is_return || 0);
+		if (isReturn) {
+			const proceed = await sumup_confirm_return_refund(frm);
+			if (!proceed) {
+				return;
+			}
+			return original_submit();
+		}
+
 		const breakdown = sumup_get_breakdown(frm.doc, sumup_modes);
 		if (!breakdown.sumup_amount) {
 			return original_submit();
@@ -426,14 +435,42 @@
 		await sumup_show_dialog(frm, pos, original_submit);
 	};
 
-	frappe.ui.form.on("POS Invoice", {
-		refresh(frm) {
-			sumup_patch_when_ready(frm);
-		},
-		after_payment_render(frm) {
-			sumup_patch_when_ready(frm);
-		},
-	});
+	const sumup_confirm_return_refund = async (frm) => {
+		try {
+			const res = await frappe.call({
+				method: "erpnext_sumup.erpnext_sumup.pos.pos_invoice.get_sumup_return_refund_preview",
+				args: { pos_invoice: frm.doc.name },
+			});
+			const result = res.message || {};
+			if (!result.needs_refund) {
+				return true;
+			}
+
+			const amount = frappe.format(result.amount || 0, {
+				fieldtype: "Currency",
+				options: frm.doc.currency,
+			});
+			const currency = result.currency || frm.doc.currency || "";
+			const message = __(
+				"This return will automatically refund {0} {1} via SumUp. Continue?",
+				[amount, currency]
+			);
+			return await new Promise((resolve) => {
+				frappe.confirm(
+					message,
+					() => resolve(true),
+					() => resolve(false)
+				);
+			});
+		} catch (error) {
+			frappe.msgprint({
+				title: __("SumUp Refund"),
+				message: __("Unable to validate SumUp refund details."),
+				indicator: "red",
+			});
+			return false;
+		}
+	};
 
 	const sumup_run_ready = (handler) => {
 		if (typeof frappe.ready === "function") {
@@ -450,6 +487,39 @@
 		}
 		handler();
 	};
+
+	const sumup_notify_refund_failed = (frm) => {
+		if (!frm || !frm.doc) {
+			return;
+		}
+		if (!cint(frm.doc.is_return || 0)) {
+			return;
+		}
+		const status = String(frm.doc.sumup_refund_status || "").toUpperCase();
+		if (status !== "FAILED") {
+			return;
+		}
+		if (frm.__sumup_refund_failed_notified) {
+			return;
+		}
+		frm.__sumup_refund_failed_notified = true;
+		frappe.msgprint({
+			title: __("SumUp Refund"),
+			message: __("SumUp refund failed. You can retry the refund manually."),
+			indicator: "red",
+		});
+	};
+
+	frappe.ui.form.on("POS Invoice", {
+		refresh(frm) {
+			sumup_patch_when_ready(frm);
+			sumup_notify_refund_failed(frm);
+		},
+		after_payment_render(frm) {
+			sumup_patch_when_ready(frm);
+			sumup_notify_refund_failed(frm);
+		},
+	});
 
 	sumup_run_ready(() => {
 		sumup_patch_when_ready(window.cur_frm);

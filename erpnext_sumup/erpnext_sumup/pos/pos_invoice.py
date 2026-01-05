@@ -143,6 +143,22 @@ def _extract_transaction_amount_currency(transaction):
 	return amount, currency
 
 
+def _extract_transaction_id(transaction):
+	if transaction is None:
+		return None
+
+	value = getattr(transaction, "id", None)
+	if value:
+		return str(value)
+
+	if isinstance(transaction, dict):
+		value = transaction.get("id") or transaction.get("transaction_id") or transaction.get("transactionId")
+		if value:
+			return str(value)
+
+	return None
+
+
 def validate_pos_invoice_sumup_currency(doc, method=None):
 	if not doc or not getattr(doc, "pos_profile", None):
 		return
@@ -172,6 +188,9 @@ def validate_pos_invoice_sumup_currency(doc, method=None):
 
 def validate_pos_invoice_sumup_payment_status(doc, method=None):
 	if not doc or not getattr(doc, "pos_profile", None):
+		return
+
+	if getattr(doc, "is_return", 0):
 		return
 
 	if not getattr(doc, "payments", None):
@@ -392,12 +411,15 @@ def get_sumup_payment_status(pos_invoice: str):
 
 	status = _extract_transaction_status(transaction) or "UNKNOWN"
 	amount, currency = _extract_transaction_amount_currency(transaction)
+	transaction_id = _extract_transaction_id(transaction)
 
 	update_values = {}
 	if amount is not None:
 		update_values["sumup_amount"] = amount
 	if currency:
 		update_values["sumup_currency"] = currency
+	if transaction_id:
+		update_values["sumup_transaction_id"] = transaction_id
 	if status in SUMUP_FINAL_STATUSES:
 		update_values["sumup_status"] = status
 
@@ -414,6 +436,317 @@ def get_sumup_payment_status(pos_invoice: str):
 		"amount": amount,
 		"currency": currency,
 	}
+
+
+@frappe.whitelist()
+def get_sumup_return_refund_preview(pos_invoice: str):
+	doc = frappe.get_doc("POS Invoice", pos_invoice)
+	if not getattr(doc, "is_return", 0):
+		return {"needs_refund": False}
+
+	settings = get_sumup_settings()
+	if not settings.enabled:
+		return {"needs_refund": False}
+
+	return_against = (getattr(doc, "return_against", "") or "").strip()
+	if not return_against:
+		return {"needs_refund": False}
+
+	original = frappe.get_doc("POS Invoice", return_against)
+	transaction_id = (getattr(original, "sumup_transaction_id", "") or "").strip()
+	if not transaction_id:
+		return {"needs_refund": False}
+
+	refund_amount = abs(_get_invoice_total(doc))
+	if refund_amount <= 0:
+		return {"needs_refund": False}
+
+	currency = (getattr(doc, "currency", "") or "").strip()
+	return {
+		"needs_refund": True,
+		"amount": refund_amount,
+		"currency": currency,
+	}
+
+
+def validate_sumup_return_refund(doc, method=None):
+	if not doc or not getattr(doc, "is_return", 0):
+		return
+
+	settings = get_sumup_settings()
+	if not settings.enabled:
+		return
+
+	return_against = (getattr(doc, "return_against", "") or "").strip()
+	if not return_against:
+		return
+
+	original = frappe.get_doc("POS Invoice", return_against)
+	transaction_id = (getattr(original, "sumup_transaction_id", "") or "").strip()
+	if not transaction_id:
+		return
+
+	original_status = (getattr(original, "sumup_status", "") or "").upper()
+	if original_status and original_status != "SUCCESSFUL":
+		frappe.throw(_("SumUp payment is not completed for the original invoice."))
+
+	refund_amount = abs(_get_invoice_total(doc))
+	if refund_amount <= 0:
+		return
+
+	original_currency = (getattr(original, "sumup_currency", "") or "").strip() or (
+		getattr(original, "currency", "") or ""
+	).strip()
+	if original_currency and getattr(doc, "currency", None) and doc.currency != original_currency:
+		frappe.throw(
+			_("SumUp refund currency {0} does not match original currency {1}.").format(
+				doc.currency,
+				original_currency,
+			)
+		)
+
+	refunded_total = flt(getattr(original, "sumup_refund_amount", 0) or 0)
+	paid_total = flt(getattr(original, "sumup_amount", 0) or 0)
+	if paid_total and refunded_total + refund_amount > paid_total + 0.0001:
+		frappe.throw(_("SumUp refund amount exceeds the original payment amount."))
+
+	return
+
+
+def trigger_sumup_return_refund(doc, method=None):
+	if not doc or not getattr(doc, "is_return", 0):
+		return
+
+	if (getattr(doc, "sumup_refund_status", "") or "").upper() == "SUCCESSFUL":
+		return
+
+	settings = get_sumup_settings()
+	if not settings.enabled:
+		return
+
+	return_against = (getattr(doc, "return_against", "") or "").strip()
+	if not return_against:
+		return
+
+	original = frappe.get_doc("POS Invoice", return_against)
+	transaction_id = (getattr(original, "sumup_transaction_id", "") or "").strip()
+	if not transaction_id:
+		return
+
+	refund_amount = abs(_get_invoice_total(doc))
+	if refund_amount <= 0:
+		return
+
+	frappe.db.set_value(
+		"POS Invoice",
+		doc.name,
+		{
+			"sumup_transaction_id": transaction_id,
+			"sumup_refund_amount": refund_amount,
+			"sumup_refund_status": "PENDING",
+		},
+		update_modified=False,
+	)
+
+	def _run_refund():
+		_execute_sumup_return_refund(doc.name)
+
+	frappe.db.after_commit(_run_refund)
+
+
+def _execute_sumup_return_refund(return_doc_name: str):
+	doc = frappe.get_doc("POS Invoice", return_doc_name)
+	if not doc or not getattr(doc, "is_return", 0):
+		return
+
+	if (getattr(doc, "sumup_refund_status", "") or "").upper() == "SUCCESSFUL":
+		return
+
+	settings = get_sumup_settings()
+	if not settings.enabled:
+		frappe.db.set_value(
+			"POS Invoice",
+			doc.name,
+			{
+				"sumup_refund_status": "FAILED",
+				"sumup_refund_amount": flt(getattr(doc, "sumup_refund_amount", 0) or 0),
+				"sumup_transaction_id": getattr(doc, "sumup_transaction_id", None),
+			},
+			update_modified=False,
+		)
+		frappe.log_error(
+			message=_("SumUp is disabled in settings."),
+			title=_("SumUp refund failed"),
+		)
+		return
+
+	return_against = (getattr(doc, "return_against", "") or "").strip()
+	if not return_against:
+		return
+
+	original = frappe.get_doc("POS Invoice", return_against)
+	transaction_id = (getattr(original, "sumup_transaction_id", "") or "").strip()
+	if not transaction_id:
+		return
+
+	refund_amount = flt(getattr(doc, "sumup_refund_amount", 0) or 0)
+	if refund_amount <= 0:
+		refund_amount = abs(_get_invoice_total(doc))
+	if refund_amount <= 0:
+		return
+
+	original_status = (getattr(original, "sumup_status", "") or "").upper()
+	if original_status and original_status != "SUCCESSFUL":
+		frappe.db.set_value(
+			"POS Invoice",
+			doc.name,
+			{
+				"sumup_refund_status": "FAILED",
+				"sumup_refund_amount": refund_amount,
+				"sumup_transaction_id": transaction_id,
+			},
+			update_modified=False,
+		)
+		frappe.log_error(
+			message=_("SumUp payment is not completed for the original invoice."),
+			title=_("SumUp refund failed"),
+		)
+		return
+
+	original_currency = (getattr(original, "sumup_currency", "") or "").strip() or (
+		getattr(original, "currency", "") or ""
+	).strip()
+	if original_currency and getattr(doc, "currency", None) and doc.currency != original_currency:
+		frappe.db.set_value(
+			"POS Invoice",
+			doc.name,
+			{
+				"sumup_refund_status": "FAILED",
+				"sumup_refund_amount": refund_amount,
+				"sumup_transaction_id": transaction_id,
+			},
+			update_modified=False,
+		)
+		frappe.log_error(
+			message=_("SumUp refund currency {0} does not match original currency {1}.").format(
+				doc.currency, original_currency
+			),
+			title=_("SumUp refund failed"),
+		)
+		return
+
+	refunded_total = flt(getattr(original, "sumup_refund_amount", 0) or 0)
+	paid_total = flt(getattr(original, "sumup_amount", 0) or 0)
+	if paid_total and refunded_total + refund_amount > paid_total + 0.0001:
+		frappe.db.set_value(
+			"POS Invoice",
+			doc.name,
+			{
+				"sumup_refund_status": "FAILED",
+				"sumup_refund_amount": refund_amount,
+				"sumup_transaction_id": transaction_id,
+			},
+			update_modified=False,
+		)
+		frappe.log_error(
+			message=_("SumUp refund amount exceeds the original payment amount."),
+			title=_("SumUp refund failed"),
+		)
+		return
+
+	client = get_sumup_client(require_enabled=False)
+	try:
+		from sumup.transactions.resource import RefundTransactionBody
+	except Exception:
+		RefundTransactionBody = None
+
+	payload = (
+		RefundTransactionBody(amount=refund_amount) if RefundTransactionBody else {"amount": refund_amount}
+	)
+	try:
+		client.transactions.refund(transaction_id, payload)
+	except Exception as exc:
+		frappe.db.set_value(
+			"POS Invoice",
+			doc.name,
+			{
+				"sumup_refund_status": "FAILED",
+				"sumup_refund_amount": refund_amount,
+				"sumup_transaction_id": transaction_id,
+			},
+			update_modified=False,
+		)
+		frappe.log_error(
+			message=_("SumUp API error: {0}").format(exc),
+			title=_("SumUp refund failed"),
+		)
+		return
+
+	frappe.db.set_value(
+		"POS Invoice",
+		original.name,
+		"sumup_refund_amount",
+		refunded_total + refund_amount,
+		update_modified=False,
+	)
+
+	frappe.db.set_value(
+		"POS Invoice",
+		doc.name,
+		{
+			"sumup_refund_status": "SUCCESSFUL",
+			"sumup_refund_amount": refund_amount,
+			"sumup_transaction_id": transaction_id,
+		},
+		update_modified=False,
+	)
+
+
+@frappe.whitelist()
+def retry_sumup_return_refund(pos_invoice: str):
+	doc = frappe.get_doc("POS Invoice", pos_invoice)
+	if not doc or not getattr(doc, "is_return", 0):
+		frappe.throw(_("Refund retries are only available for return invoices."))
+
+	if doc.docstatus != 1:
+		frappe.throw(_("Refund retries are only available for submitted returns."))
+
+	settings = get_sumup_settings()
+	if not settings.enabled:
+		frappe.throw(_("SumUp is disabled in settings."))
+
+	status = (getattr(doc, "sumup_refund_status", "") or "").upper()
+	if status != "FAILED":
+		frappe.throw(_("Refund can only be retried when status is FAILED."))
+
+	validate_sumup_return_refund(doc)
+
+	refund_amount = abs(_get_invoice_total(doc))
+	if refund_amount <= 0:
+		frappe.throw(_("Refund amount must be greater than zero."))
+
+	return_against = (getattr(doc, "return_against", "") or "").strip()
+	transaction_id = None
+	if return_against:
+		original = frappe.get_doc("POS Invoice", return_against)
+		transaction_id = (getattr(original, "sumup_transaction_id", "") or "").strip() or None
+
+	frappe.db.set_value(
+		"POS Invoice",
+		doc.name,
+		{
+			"sumup_refund_status": "PENDING",
+			"sumup_refund_amount": refund_amount,
+			"sumup_transaction_id": transaction_id,
+		},
+		update_modified=False,
+	)
+
+	_execute_sumup_return_refund(doc.name)
+
+	final_status = frappe.db.get_value("POS Invoice", doc.name, "sumup_refund_status")
+	message = _("SumUp refund retry completed with status: {0}.").format(final_status or "UNKNOWN")
+	return {"status": final_status, "message": message}
 
 
 @frappe.whitelist()
