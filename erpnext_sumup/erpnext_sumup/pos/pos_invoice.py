@@ -330,40 +330,65 @@ def get_sumup_payment_status(pos_invoice: str):
 	except Exception:
 		GetTransactionV21Params = None
 
-	params = (
-		GetTransactionV21Params(client_transaction_id=transaction_id)
-		if GetTransactionV21Params
-		else {"client_transaction_id": transaction_id}
-	)
+	if not GetTransactionV21Params:
+		frappe.throw(_("SumUp SDK does not support transaction lookup. Please update the sumup package."))
+
+	params = GetTransactionV21Params(client_transaction_id=transaction_id)
+	params_dict = {"client_transaction_id": transaction_id}
 	if hasattr(params, "model_dump"):
-		params = params.model_dump(by_alias=True, exclude_none=True)
-
-	http_client = getattr(client, "_client", None)
-	if http_client is None:
-		frappe.throw(_("SumUp API error: client transport not available."))
-
+		params_dict = params.model_dump(by_alias=True, exclude_none=True)
+	elif hasattr(params, "dict"):
+		params_dict = params.dict(by_alias=True, exclude_none=True)
 	try:
-		response = http_client.get(
-			f"/v2.1/merchants/{merchant_code}/transactions",
-			params=params,
-		)
+		transaction = client.transactions.get(merchant_code, params=params)
 	except Exception as exc:
-		frappe.throw(_("SumUp API error: {0}").format(exc))
+		status_code = getattr(exc, "status", None)
+		if status_code == 404:
+			return {
+				"status": "PENDING",
+				"amount": None,
+				"currency": None,
+			}
+		is_validation_error = False
+		try:
+			import pydantic
+		except Exception:
+			pydantic = None
 
-	if response.status_code == 404:
-		return {
-			"status": "PENDING",
-			"amount": None,
-			"currency": None,
-		}
-	if response.status_code != 200:
-		detail = f" {response.text}" if response.text else ""
-		frappe.throw(_("SumUp API error: {0}{1}").format(response.status_code, detail))
+		if pydantic and isinstance(exc, pydantic.ValidationError):
+			is_validation_error = True
+		elif exc.__class__.__name__ == "ValidationError":
+			is_validation_error = True
 
-	try:
-		transaction = response.json()
-	except Exception as exc:
-		frappe.throw(_("SumUp API error: {0}").format(exc))
+		if not is_validation_error:
+			frappe.throw(_("SumUp API error: {0}").format(exc))
+
+		http_client = getattr(client, "_client", None)
+		if http_client is None:
+			frappe.throw(_("SumUp API error: client transport not available."))
+
+		try:
+			response = http_client.get(
+				f"/v2.1/merchants/{merchant_code}/transactions",
+				params=params_dict,
+			)
+		except Exception as raw_exc:
+			frappe.throw(_("SumUp API error: {0}").format(raw_exc))
+
+		if response.status_code == 404:
+			return {
+				"status": "PENDING",
+				"amount": None,
+				"currency": None,
+			}
+		if response.status_code != 200:
+			detail = f" {response.text}" if response.text else ""
+			frappe.throw(_("SumUp API error: {0}{1}").format(response.status_code, detail))
+
+		try:
+			transaction = response.json()
+		except Exception as raw_exc:
+			frappe.throw(_("SumUp API error: {0}").format(raw_exc))
 
 	status = _extract_transaction_status(transaction) or "UNKNOWN"
 	amount, currency = _extract_transaction_amount_currency(transaction)

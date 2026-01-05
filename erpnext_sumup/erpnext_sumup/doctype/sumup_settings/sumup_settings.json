@@ -14,7 +14,10 @@
   "affiliate_app_id",
   "debugging_tab",
   "debug_section",
-  "enable_debug_logging"
+  "enable_debug_logging",
+  "recovery_tab",
+  "recovery_section",
+  "enable_recovery_mode"
  ],
  "fields": [
   {
@@ -68,6 +71,22 @@
    "fieldname": "enable_debug_logging",
    "fieldtype": "Check",
    "label": "Enable Debugging"
+  },
+  {
+   "fieldname": "recovery_tab",
+   "fieldtype": "Tab Break",
+   "label": "Recovery Mode"
+  },
+  {
+   "fieldname": "recovery_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "description": "Enable recovery mode to sync readers from SumUp into local terminals.",
+   "fieldname": "enable_recovery_mode",
+   "fieldtype": "Check",
+   "label": "Enable Recovery Mode"
   }
  ],
  "grid_page_length": 50,

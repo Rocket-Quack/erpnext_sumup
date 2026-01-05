@@ -250,6 +250,46 @@ const show_status_message = (result) => {
 	});
 };
 
+const show_recovery_message = (result) => {
+	const message = result.message || __("Recovery completed.");
+	const failed = result.failed || [];
+
+	if (!failed.length) {
+		frappe.msgprint(message);
+		return;
+	}
+
+	const detail_html = failed
+		.map((item) => {
+			const terminalId = frappe.utils.escape_html(item.terminal_id || "");
+			const error = frappe.utils.escape_html(item.error || "");
+			const label = terminalId ? terminalId : __("Unknown Reader");
+			return `<div><strong>${label}</strong>: ${error}</div>`;
+		})
+		.join("");
+
+	frappe.msgprint({
+		title: __("Recovery Sync"),
+		message: `${frappe.utils.escape_html(message)}<br><br>${detail_html}`,
+		indicator: "orange",
+	});
+};
+
+const run_recovery_sync = (listview) => {
+	frappe.confirm(__("Fetch readers from SumUp and sync local terminals?"), () => {
+		frappe.call({
+			method: "erpnext_sumup.erpnext_sumup.doctype.sumup_terminal.sumup_terminal.recover_terminals_from_sumup",
+			freeze: true,
+			freeze_message: __("Syncing terminals..."),
+			callback: (response) => {
+				const result = response.message || {};
+				listview.refresh();
+				show_recovery_message(result);
+			},
+		});
+	});
+};
+
 const remove_selected_terminals = (listview) => {
 	const terminal_names = get_selected_terminal_names(listview);
 	if (!terminal_names.length) {
@@ -348,6 +388,19 @@ frappe.listview_settings["SumUp Terminal"] = {
 
 				listview.page.add_inner_button(__("Force Remove (Local Only)"), () => {
 					force_remove_selected_terminals(listview);
+				});
+			});
+
+		frappe.db
+			.get_value("SumUp Settings", "SumUp Settings", "enable_recovery_mode")
+			.then((response) => {
+				const enabled = cint(response.message && response.message.enable_recovery_mode);
+				if (!enabled) {
+					return;
+				}
+
+				listview.page.add_inner_button(__("Recovery Sync"), () => {
+					run_recovery_sync(listview);
 				});
 			});
 	},

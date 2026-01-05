@@ -75,6 +75,20 @@ def _extract_reader_data(reader):
 	return reader_id, status
 
 
+def _extract_reader_name(reader):
+	name = getattr(reader, "name", None)
+	if name:
+		return str(name)
+
+	reader_data = _as_dict(reader)
+	if isinstance(reader_data, dict):
+		value = reader_data.get("name")
+		if value:
+			return str(value)
+
+	return None
+
+
 def _parse_terminal_names(value):
 	if not value:
 		return []
@@ -263,7 +277,7 @@ def _get_linked_pos_profiles(terminal_name: str | None) -> list[str]:
 
 
 def _fetch_terminal_status_payload(client, merchant_code: str, terminal_id: str) -> dict:
-	status_response = client.readers.show_reader_status(merchant_code, terminal_id)
+	status_response = client.readers.get_status(merchant_code, terminal_id)
 	return _extract_status_payload(status_response)
 
 
@@ -558,6 +572,109 @@ def refresh_terminal_statuses(*, terminal_names=None, throw_on_missing: bool = T
 
 def refresh_terminal_statuses_hourly():
 	refresh_terminal_statuses(throw_on_missing=False)
+
+
+@frappe.whitelist()
+def recover_terminals_from_sumup():
+	settings = get_sumup_settings()
+	if not settings.enabled:
+		frappe.throw(_("SumUp is disabled in settings."))
+
+	if not getattr(settings, "enable_recovery_mode", 0):
+		frappe.throw(_("Recovery mode is disabled in SumUp Settings."))
+
+	merchant_code = (settings.merchant_code or "").strip()
+	if not merchant_code:
+		frappe.throw(_("Merchant code is missing in SumUp Settings."))
+
+	client = get_sumup_client(require_enabled=False)
+	try:
+		response = client.readers.list(merchant_code)
+	except Exception as exc:
+		frappe.throw(_("SumUp API error: {0}").format(exc))
+
+	items = _extract_reader_items(response)
+	if not items:
+		return {
+			"created": [],
+			"updated": [],
+			"skipped": [],
+			"failed": [],
+			"message": _("No readers found in SumUp."),
+		}
+
+	entries = []
+	failed = []
+	for item in items:
+		reader_id, reader_status = _extract_reader_data(item)
+		if not reader_id:
+			failed.append({"terminal_id": None, "error": _("Reader ID missing in SumUp response.")})
+			continue
+		reader_name = _extract_reader_name(item) or reader_id
+		entries.append({"terminal_id": str(reader_id), "terminal_name": reader_name})
+
+	if not entries:
+		return {
+			"created": [],
+			"updated": [],
+			"skipped": [],
+			"failed": failed,
+			"message": _("No valid readers found in SumUp response."),
+		}
+
+	existing = frappe.get_all(
+		"SumUp Terminal",
+		filters={"terminal_id": ["in", [entry["terminal_id"] for entry in entries]]},
+		fields=["name", "terminal_id", "terminal_name"],
+	)
+	existing_index = {row["terminal_id"]: row for row in existing}
+
+	created = []
+	updated = []
+	skipped = []
+
+	for entry in entries:
+		try:
+			existing_row = existing_index.get(entry["terminal_id"])
+			if existing_row:
+				updates = {}
+				terminal_name = (existing_row.get("terminal_name") or "").strip()
+				if entry["terminal_name"] and entry["terminal_name"] != terminal_name:
+					updates["terminal_name"] = entry["terminal_name"]
+				if updates:
+					frappe.db.set_value("SumUp Terminal", existing_row["name"], updates)
+					updated.append({"name": existing_row["name"], "terminal_id": entry["terminal_id"]})
+				else:
+					skipped.append({"name": existing_row["name"], "terminal_id": entry["terminal_id"]})
+				continue
+
+			doc = frappe.get_doc(
+				{
+					"doctype": "SumUp Terminal",
+					"terminal_id": entry["terminal_id"],
+					"terminal_name": entry["terminal_name"],
+					"enabled": 1,
+				}
+			)
+			doc.insert()
+			created.append({"name": doc.name, "terminal_id": entry["terminal_id"]})
+		except Exception as exc:
+			failed.append({"terminal_id": entry["terminal_id"], "error": _format_sumup_error(exc)})
+
+	message = _("Recovered {0} terminal(s), updated {1}, skipped {2}, failed {3}.").format(
+		len(created),
+		len(updated),
+		len(skipped),
+		len(failed),
+	)
+
+	return {
+		"created": created,
+		"updated": updated,
+		"skipped": skipped,
+		"failed": failed,
+		"message": message,
+	}
 
 
 @frappe.whitelist()
