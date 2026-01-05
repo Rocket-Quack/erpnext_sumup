@@ -65,7 +65,7 @@ Die Nennung von SumUp erfolgt ausschließlich zur **Beschreibung der technischen
 
 ## Third-Party
 
-This app uses the Python package `sumup` v0.0.19 (tag v0.0.19). See `THIRD_PARTY_NOTICE.md`.
+This app uses the Python package `sumup` v0.0.20 (tag v0.0.20). See `THIRD_PARTY_NOTICE.md`.
 
 ## License
 
