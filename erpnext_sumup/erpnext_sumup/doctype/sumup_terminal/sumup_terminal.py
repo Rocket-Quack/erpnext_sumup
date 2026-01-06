@@ -554,9 +554,6 @@ def refresh_terminal_statuses(*, terminal_names=None, throw_on_missing: bool = T
 					title=_("SumUp terminal status update failed"),
 				)
 
-	if updated:
-		frappe.db.commit()
-
 	message = _("Updated {0} terminal(s).").format(len(updated))
 	if failed:
 		message = _("Updated {0} terminal(s), {1} failed.").format(len(updated), len(failed))
