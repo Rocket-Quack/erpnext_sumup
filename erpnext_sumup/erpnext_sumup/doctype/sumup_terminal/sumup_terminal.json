@@ -1,0 +1,112 @@
+{
+ "actions": [],
+ "autoname": "field:terminal_id",
+ "creation": "2025-12-28 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "column_break_qbto",
+  "connection_status",
+  "online_status",
+  "activity_status",
+  "section_break_1",
+  "terminal_id",
+  "terminal_name",
+  "location",
+  "notes"
+ ],
+ "fields": [
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Enabled"
+  },
+  {
+   "default": "Unknown",
+   "fieldname": "connection_status",
+   "fieldtype": "Select",
+   "label": "Connection Status",
+   "options": "Unknown\nPaired\nProcessing\nExpired",
+   "read_only": 1
+  },
+  {
+   "default": "Unknown",
+   "fieldname": "online_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Online Status",
+   "options": "Unknown\nOnline\nOffline",
+   "read_only": 1
+  },
+  {
+   "default": "Unknown",
+   "fieldname": "activity_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Activity Status",
+   "options": "Unknown\nIdle\nSelecting Tip\nWaiting For Card\nWaiting For Pin\nWaiting For Signature\nUpdating Firmware",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "terminal_id",
+   "fieldtype": "Data",
+   "label": "Terminal ID",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "terminal_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Terminal Name"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Data",
+   "label": "Location"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "column_break_qbto",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "grid_page_length": 50,
+ "links": [],
+ "modified": "2025-12-29 03:50:08.867616",
+ "modified_by": "Administrator",
+ "module": "ERPNext SumUp",
+ "name": "SumUp Terminal",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "terminal_name",
+ "show_title_field_in_link": 1
+}

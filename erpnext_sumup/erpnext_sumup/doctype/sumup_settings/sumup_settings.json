@@ -1,0 +1,118 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-12-28 17:46:13.686389",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "section_break_ntnx",
+  "api_key",
+  "merchant_code",
+  "merchant_currency",
+  "affiliate_key",
+  "affiliate_app_id",
+  "debugging_tab",
+  "debug_section",
+  "enable_debug_logging",
+  "recovery_tab",
+  "recovery_section",
+  "enable_recovery_mode"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Activated"
+  },
+  {
+   "fieldname": "section_break_ntnx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "api_key",
+   "fieldtype": "Password",
+   "label": "API Key"
+  },
+  {
+   "fieldname": "merchant_code",
+   "fieldtype": "Data",
+   "label": "Merchant Code"
+  },
+  {
+   "fieldname": "merchant_currency",
+   "fieldtype": "Data",
+   "label": "Merchant Currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "affiliate_key",
+   "fieldtype": "Password",
+   "label": "Affiliate Key"
+  },
+  {
+   "fieldname": "affiliate_app_id",
+   "fieldtype": "Data",
+   "label": "Affiliate App ID"
+  },
+  {
+   "fieldname": "debugging_tab",
+   "fieldtype": "Tab Break",
+   "label": "Debugging"
+  },
+  {
+   "fieldname": "debug_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "description": "Enable detailed error output for troubleshooting. Only for advanced users.",
+   "fieldname": "enable_debug_logging",
+   "fieldtype": "Check",
+   "label": "Enable Debugging"
+  },
+  {
+   "fieldname": "recovery_tab",
+   "fieldtype": "Tab Break",
+   "label": "Recovery Mode"
+  },
+  {
+   "fieldname": "recovery_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "description": "Enable recovery mode to sync readers from SumUp into local terminals.",
+   "fieldname": "enable_recovery_mode",
+   "fieldtype": "Check",
+   "label": "Enable Recovery Mode"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-12-28 19:22:06.715266",
+ "modified_by": "Administrator",
+ "module": "ERPNext SumUp",
+ "name": "SumUp Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

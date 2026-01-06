@@ -1,0 +1,137 @@
+.sumup-status {
+	align-items: center;
+	background: #f7f9fc;
+	border: 1px solid #e2e8f0;
+	border-radius: 14px;
+	display: flex;
+	gap: 16px;
+	padding: 16px 18px;
+}
+
+.sumup-status__icon {
+	align-items: center;
+	background: #ffffff;
+	border: 2px solid #cbd5e1;
+	border-radius: 999px;
+	box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+	display: flex;
+	height: 72px;
+	justify-content: center;
+	width: 72px;
+}
+
+.sumup-status__icon-svg {
+	height: 56px;
+	width: 56px;
+}
+
+.sumup-status__spinner {
+	animation: sumup-spin 0.9s linear infinite;
+	border: 6px solid #d7e4ff;
+	border-radius: 50%;
+	border-top-color: #3b82f6;
+	height: 56px;
+	width: 56px;
+}
+
+.sumup-status__label {
+	color: #0f172a;
+	font-size: 16px;
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+
+.sumup-status__message {
+	color: #64748b;
+	font-size: 12px;
+}
+
+.sumup-status--starting .sumup-status__icon,
+.sumup-status--waiting .sumup-status__icon {
+	border-color: #93c5fd;
+	color: #3b82f6;
+}
+
+.sumup-status--success .sumup-status__icon {
+	border-color: #86efac;
+	color: #22c55e;
+	animation: sumup-pop 0.35s ease-out;
+}
+
+.sumup-status--success .sumup-status__label,
+.sumup-status--success .sumup-status__message {
+	color: #15803d;
+}
+
+.sumup-status--error .sumup-status__icon {
+	border-color: #fca5a5;
+	color: #ef4444;
+	animation: sumup-pop 0.35s ease-out;
+}
+
+.sumup-status--error .sumup-status__label,
+.sumup-status--error .sumup-status__message {
+	color: #b91c1c;
+}
+
+@keyframes sumup-spin {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes sumup-pop {
+	0% {
+		transform: scale(0.85);
+	}
+	60% {
+		transform: scale(1.05);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+.sumup-refund-confirm {
+	background: #f8fafc;
+	border: 1px solid #e2e8f0;
+	border-radius: 14px;
+	padding: 18px;
+}
+
+.sumup-refund-confirm__label {
+	color: #64748b;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.sumup-refund-confirm__amount {
+	color: #0f172a;
+	font-size: 26px;
+	font-weight: 700;
+	margin-top: 6px;
+}
+
+.sumup-refund-confirm__currency {
+	color: #64748b;
+	font-size: 14px;
+	font-weight: 500;
+	margin-left: 6px;
+}
+
+.sumup-refund-confirm__note {
+	color: #475569;
+	font-size: 13px;
+	margin-top: 8px;
+}
+
+.sumup-refund-confirm__meta {
+	color: #64748b;
+	font-size: 12px;
+	margin-top: 12px;
+}
