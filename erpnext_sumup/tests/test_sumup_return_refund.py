@@ -127,7 +127,12 @@ class TestSumUpReturnRefund(FrappeTestCase):
 			pos_invoice.validate_sumup_return_refund(return_doc)
 
 	def test_execute_refund_success(self):
-		return_doc = DummyReturnDoc(sumup_refund_status="PENDING", sumup_refund_amount=10)
+		return_doc = DummyReturnDoc(
+			sumup_refund_status="PENDING",
+			sumup_refund_amount=10,
+			grand_total=-10,
+			rounded_total=-10,
+		)
 		original_doc = DummyOriginalDoc(sumup_amount=100, sumup_refund_amount=20)
 		client = DummyClient()
 		set_calls = []
@@ -143,6 +148,7 @@ class TestSumUpReturnRefund(FrappeTestCase):
 			set_calls.append((doctype, name, values, args, kwargs))
 
 		with (
+			self._patch_defaults(),
 			self._patch_settings(),
 			patch(
 				"erpnext_sumup.erpnext_sumup.pos.pos_invoice.frappe.get_doc",
@@ -153,15 +159,12 @@ class TestSumUpReturnRefund(FrappeTestCase):
 				side_effect=fake_set_value,
 			),
 			patch(
-				"erpnext_sumup.erpnext_sumup.pos.pos_invoice.frappe.log_error",
-				return_value=None,
-			),
-			patch(
 				"erpnext_sumup.erpnext_sumup.pos.pos_invoice.get_sumup_client",
 				return_value=client,
 			),
 		):
-			pos_invoice._execute_sumup_return_refund(return_doc.name)
+			context = pos_invoice._get_sumup_refund_context(return_doc, strict_missing_transaction=True)
+			pos_invoice._attempt_sumup_return_refund(return_doc, context, raise_on_error=False)
 
 		self.assertEqual(len(client.transactions.calls), 1)
 		self.assertTrue(
@@ -173,7 +176,12 @@ class TestSumUpReturnRefund(FrappeTestCase):
 		)
 
 	def test_execute_refund_failure_sets_failed(self):
-		return_doc = DummyReturnDoc(sumup_refund_status="PENDING", sumup_refund_amount=10)
+		return_doc = DummyReturnDoc(
+			sumup_refund_status="PENDING",
+			sumup_refund_amount=10,
+			grand_total=-10,
+			rounded_total=-10,
+		)
 		original_doc = DummyOriginalDoc(sumup_amount=100, sumup_refund_amount=0)
 
 		class FailingTransactions:
@@ -194,6 +202,7 @@ class TestSumUpReturnRefund(FrappeTestCase):
 			set_calls.append((doctype, name, values, args, kwargs))
 
 		with (
+			self._patch_defaults(),
 			self._patch_settings(),
 			patch(
 				"erpnext_sumup.erpnext_sumup.pos.pos_invoice.frappe.get_doc",
@@ -204,15 +213,12 @@ class TestSumUpReturnRefund(FrappeTestCase):
 				side_effect=fake_set_value,
 			),
 			patch(
-				"erpnext_sumup.erpnext_sumup.pos.pos_invoice.frappe.log_error",
-				return_value=None,
-			),
-			patch(
 				"erpnext_sumup.erpnext_sumup.pos.pos_invoice.get_sumup_client",
 				return_value=client,
 			),
 		):
-			pos_invoice._execute_sumup_return_refund(return_doc.name)
+			context = pos_invoice._get_sumup_refund_context(return_doc, strict_missing_transaction=True)
+			pos_invoice._attempt_sumup_return_refund(return_doc, context, raise_on_error=False)
 
 		self.assertTrue(
 			any(
@@ -245,7 +251,7 @@ class TestSumUpReturnRefund(FrappeTestCase):
 		return_doc = DummyReturnDoc(sumup_refund_status="FAILED")
 		original_doc = DummyOriginalDoc()
 		set_calls = []
-		exec_calls = []
+		attempt_calls = []
 
 		def fake_get_doc(doctype, name):
 			if name == return_doc.name:
@@ -255,8 +261,9 @@ class TestSumUpReturnRefund(FrappeTestCase):
 		def fake_set_value(doctype, name, values, *args, **kwargs):
 			set_calls.append((doctype, name, values))
 
-		def fake_execute(name):
-			exec_calls.append(name)
+		def fake_attempt(doc, context, raise_on_error):
+			attempt_calls.append((doc.name, context, raise_on_error))
+			return True
 
 		with (
 			self._patch_defaults(),
@@ -270,8 +277,8 @@ class TestSumUpReturnRefund(FrappeTestCase):
 				side_effect=fake_set_value,
 			),
 			patch(
-				"erpnext_sumup.erpnext_sumup.pos.pos_invoice._execute_sumup_return_refund",
-				side_effect=fake_execute,
+				"erpnext_sumup.erpnext_sumup.pos.pos_invoice._attempt_sumup_return_refund",
+				side_effect=fake_attempt,
 			),
 			patch(
 				"erpnext_sumup.erpnext_sumup.pos.pos_invoice.frappe.db.get_value",
@@ -280,7 +287,7 @@ class TestSumUpReturnRefund(FrappeTestCase):
 		):
 			result = pos_invoice.retry_sumup_return_refund(return_doc.name)
 
-		self.assertEqual(exec_calls, [return_doc.name])
+		self.assertEqual([call[0] for call in attempt_calls], [return_doc.name])
 		self.assertTrue(
 			any(
 				call[1] == return_doc.name

@@ -1,3 +1,4 @@
+/* global erpnext_sumup */
 (() => {
 	if (typeof frappe === "undefined") {
 		return;
@@ -8,6 +9,20 @@
 	window.__sumup_pos_invoice_loaded = true;
 
 	frappe.provide("erpnext_sumup.pos");
+
+	const sumup_debug = (typeof erpnext_sumup !== "undefined" && erpnext_sumup.debug) || {};
+	const sumup_log_debug = sumup_debug.log || (() => {});
+	const sumup_bind_refund_debug = sumup_debug.bind_refund_listener || (() => {});
+	const sumup_confirm_return_refund = (frm) => {
+		if (
+			typeof erpnext_sumup !== "undefined" &&
+			erpnext_sumup.pos &&
+			typeof erpnext_sumup.pos.confirm_refund === "function"
+		) {
+			return erpnext_sumup.pos.confirm_refund(frm);
+		}
+		return Promise.resolve(true);
+	};
 
 	const sumup_get_invoice_total = (doc) => {
 		const disableRounded = cint(frappe.sys_defaults.disable_rounded_total || 0);
@@ -223,6 +238,85 @@
 		dialog.__sumup_polling_locked = false;
 	};
 
+	const sumup_handle_save_fail = (frm, btn, on_error) => {
+		if (frm && typeof frm.handle_save_fail === "function") {
+			frm.handle_save_fail(btn, on_error);
+			return;
+		}
+		if (btn) {
+			$(btn).prop("disabled", false);
+		}
+		if (on_error) {
+			on_error();
+		}
+	};
+
+	const sumup_savesubmit_without_confirm = (frm, btn, callback, on_error) => {
+		const me = frm;
+		return new Promise((resolve) => {
+			me.validate_form_action("Submit");
+
+			frappe.validated = true;
+			me.script_manager.trigger("before_submit").then(() => {
+				if (!frappe.validated) {
+					sumup_handle_save_fail(me, btn, on_error);
+					return;
+				}
+
+				me.save(
+					"Submit",
+					(r) => {
+						if (r.exc) {
+							sumup_handle_save_fail(me, btn, on_error);
+							return;
+						}
+						frappe.utils.play_sound("submit");
+						callback && callback();
+						me.script_manager
+							.trigger("on_submit")
+							.then(() => resolve(me))
+							.then(() => {
+								if (frappe.route_hooks.after_submit) {
+									const route_callback = frappe.route_hooks.after_submit;
+									delete frappe.route_hooks.after_submit;
+									route_callback(me);
+								}
+							});
+					},
+					btn,
+					() => sumup_handle_save_fail(me, btn, on_error)
+				);
+			});
+		});
+	};
+
+	const sumup_submit_without_confirm = (frm, original_submit) => {
+		if (!frm || typeof frm.savesubmit !== "function" || !original_submit) {
+			return original_submit ? original_submit() : undefined;
+		}
+
+		const original_savesubmit = frm.savesubmit;
+		frm.savesubmit = (btn, callback, on_error) =>
+			sumup_savesubmit_without_confirm(frm, btn, callback, on_error);
+
+		let result;
+		try {
+			result = original_submit();
+		} catch (error) {
+			frm.savesubmit = original_savesubmit;
+			throw error;
+		}
+
+		if (result && result.then) {
+			return result.finally(() => {
+				frm.savesubmit = original_savesubmit;
+			});
+		}
+
+		frm.savesubmit = original_savesubmit;
+		return result;
+	};
+
 	const sumup_start_polling = (dialog, frm, original_submit) => {
 		const poll = async () => {
 			if (dialog.__sumup_polling_locked) {
@@ -235,15 +329,28 @@
 					args: { pos_invoice: frm.doc.name },
 				});
 				const result = res.message || {};
+				sumup_log_debug(result.debug_details, "status");
+				if (
+					result.transaction_id &&
+					result.transaction_id !== frm.doc.sumup_transaction_id
+				) {
+					sumup_update_fields(frm, {
+						sumup_transaction_id: result.transaction_id,
+					});
+				}
 				const status = String(result.status || "").toUpperCase();
 
 				if (status === "SUCCESSFUL") {
 					sumup_stop_polling(dialog);
-					sumup_update_fields(frm, {
+					const update_values = {
 						sumup_status: "SUCCESSFUL",
 						sumup_amount: result.amount || frm.doc.sumup_amount,
 						sumup_currency: result.currency || frm.doc.sumup_currency,
-					});
+					};
+					if (result.transaction_id) {
+						update_values.sumup_transaction_id = result.transaction_id;
+					}
+					sumup_update_fields(frm, update_values);
 					sumup_render_steps(
 						dialog,
 						{ start: "done", wait: "done", done: "done" },
@@ -251,7 +358,7 @@
 						"success"
 					);
 					frm.__sumup_payment_in_progress = false;
-					const result_submit = original_submit();
+					const result_submit = sumup_submit_without_confirm(frm, original_submit);
 					if (result_submit && result_submit.then) {
 						result_submit.finally(() => dialog.hide());
 					} else {
@@ -347,6 +454,7 @@
 				args: { pos_invoice: frm.doc.name },
 			});
 			const result = res.message || {};
+			sumup_log_debug(result.debug_details, "start");
 			if (!result.client_transaction_id) {
 				throw new Error(__("Unable to start SumUp payment."));
 			}
@@ -392,17 +500,17 @@
 			return;
 		}
 
-		const sumup_modes = sumup_get_modes(pos);
-		if (!sumup_modes.length) {
+		const isReturn = cint(frm.doc.is_return || 0);
+		if (isReturn) {
+			const confirmed = await sumup_confirm_return_refund(frm);
+			if (!confirmed) {
+				return;
+			}
 			return original_submit();
 		}
 
-		const isReturn = cint(frm.doc.is_return || 0);
-		if (isReturn) {
-			const proceed = await sumup_confirm_return_refund(frm);
-			if (!proceed) {
-				return;
-			}
+		const sumup_modes = sumup_get_modes(pos);
+		if (!sumup_modes.length) {
 			return original_submit();
 		}
 
@@ -433,43 +541,6 @@
 
 		frm.__sumup_payment_in_progress = true;
 		await sumup_show_dialog(frm, pos, original_submit);
-	};
-
-	const sumup_confirm_return_refund = async (frm) => {
-		try {
-			const res = await frappe.call({
-				method: "erpnext_sumup.erpnext_sumup.pos.pos_invoice.get_sumup_return_refund_preview",
-				args: { pos_invoice: frm.doc.name },
-			});
-			const result = res.message || {};
-			if (!result.needs_refund) {
-				return true;
-			}
-
-			const amount = frappe.format(result.amount || 0, {
-				fieldtype: "Currency",
-				options: frm.doc.currency,
-			});
-			const currency = result.currency || frm.doc.currency || "";
-			const message = __(
-				"This return will automatically refund {0} {1} via SumUp. Continue?",
-				[amount, currency]
-			);
-			return await new Promise((resolve) => {
-				frappe.confirm(
-					message,
-					() => resolve(true),
-					() => resolve(false)
-				);
-			});
-		} catch (error) {
-			frappe.msgprint({
-				title: __("SumUp Refund"),
-				message: __("Unable to validate SumUp refund details."),
-				indicator: "red",
-			});
-			return false;
-		}
 	};
 
 	const sumup_run_ready = (handler) => {
@@ -524,5 +595,6 @@
 	sumup_run_ready(() => {
 		sumup_patch_when_ready(window.cur_frm);
 		sumup_attach_click_guard();
+		sumup_bind_refund_debug();
 	});
 })();

@@ -42,7 +42,10 @@ fixtures = [
 
 # include js, css files in header of desk.html
 app_include_css = "/assets/erpnext_sumup/css/pos_invoice_sumup.css"
-# app_include_js = "/assets/erpnext_sumup/js/pos_invoice_sumup.js"
+app_include_js = [
+	"/assets/erpnext_sumup/js/sumup_debug.js",
+	"/assets/erpnext_sumup/js/sumup_refund_confirm.js",
+]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/erpnext_sumup/css/erpnext_sumup.css"
@@ -171,8 +174,8 @@ doc_events = {
 		"before_submit": [
 			"erpnext_sumup.erpnext_sumup.pos.pos_invoice.validate_pos_invoice_sumup_payment_status",
 			"erpnext_sumup.erpnext_sumup.pos.pos_invoice.validate_sumup_return_refund",
+			"erpnext_sumup.erpnext_sumup.pos.pos_invoice.process_sumup_return_refund_before_submit",
 		],
-		"on_submit": "erpnext_sumup.erpnext_sumup.pos.pos_invoice.trigger_sumup_return_refund",
 	},
 }
 # Scheduled Tasks

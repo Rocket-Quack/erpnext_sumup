@@ -1,41 +1,27 @@
+/* global erpnext_sumup */
 (() => {
 	if (typeof frappe === "undefined") {
 		return;
 	}
 
-	const confirm_sumup_refund = (frm) =>
-		new Promise((resolve) => {
-			frappe.call({
-				method: "erpnext_sumup.erpnext_sumup.pos.pos_invoice.get_sumup_return_refund_preview",
-				args: { pos_invoice: frm.doc.name },
-				callback: (response) => {
-					const result = response.message || {};
-					if (!result.needs_refund) {
-						resolve(true);
-						return;
-					}
+	const sumup_debug = (typeof erpnext_sumup !== "undefined" && erpnext_sumup.debug) || {};
+	const sumup_log_debug = sumup_debug.log || (() => {});
+	const sumup_bind_refund_debug = sumup_debug.bind_refund_listener || (() => {});
 
-					const amount = frappe.format(result.amount || 0, {
-						fieldtype: "Currency",
-						options: frm.doc.currency,
-					});
-					const currency = result.currency || frm.doc.currency || "";
-					const message = __(
-						"This return will automatically refund {0} {1} via SumUp. Continue?",
-						[amount, currency]
-					);
-
-					frappe.confirm(
-						message,
-						() => resolve(true),
-						() => resolve(false)
-					);
-				},
-			});
-		});
+	const confirm_sumup_refund = (frm) => {
+		if (
+			typeof erpnext_sumup !== "undefined" &&
+			erpnext_sumup.pos &&
+			typeof erpnext_sumup.pos.confirm_refund === "function"
+		) {
+			return erpnext_sumup.pos.confirm_refund(frm);
+		}
+		return Promise.resolve(true);
+	};
 
 	frappe.ui.form.on("POS Invoice", {
 		refresh(frm) {
+			sumup_bind_refund_debug();
 			if (!cint(frm.doc.is_return || 0)) {
 				return;
 			}
@@ -75,6 +61,10 @@
 		},
 		before_submit(frm) {
 			if (!cint(frm.doc.is_return || 0)) {
+				return true;
+			}
+
+			if (frm.__sumup_refund_confirmed) {
 				return true;
 			}
 

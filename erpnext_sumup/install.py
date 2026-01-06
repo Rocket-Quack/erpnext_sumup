@@ -36,13 +36,19 @@ def create_custom_fields_for_erpnext():
 		],
 		"POS Invoice": [
 			dict(
+				fieldname="sumup_section_break",
+				label="SumUp",
+				fieldtype="Section Break",
+				insert_after="payments",
+			),
+			dict(
 				fieldname="sumup_status",
 				label="SumUp Status",
 				fieldtype="Select",
-				options="PENDING\nSUCCESSFUL\nFAILED\nCANCELLED",
-				insert_after="payments",
+				options="\nPENDING\nSUCCESSFUL\nFAILED\nCANCELLED",
+				insert_after="sumup_section_break",
 				read_only=1,
-				hidden=1,
+				hidden=0,
 			),
 			dict(
 				fieldname="sumup_client_transaction_id",
@@ -50,7 +56,7 @@ def create_custom_fields_for_erpnext():
 				fieldtype="Data",
 				insert_after="sumup_status",
 				read_only=1,
-				hidden=1,
+				hidden=0,
 			),
 			dict(
 				fieldname="sumup_transaction_id",
@@ -58,7 +64,7 @@ def create_custom_fields_for_erpnext():
 				fieldtype="Data",
 				insert_after="sumup_client_transaction_id",
 				read_only=1,
-				hidden=1,
+				hidden=0,
 			),
 			dict(
 				fieldname="sumup_amount",
@@ -67,7 +73,7 @@ def create_custom_fields_for_erpnext():
 				options="currency",
 				insert_after="sumup_transaction_id",
 				read_only=1,
-				hidden=1,
+				hidden=0,
 			),
 			dict(
 				fieldname="sumup_currency",
@@ -75,16 +81,16 @@ def create_custom_fields_for_erpnext():
 				fieldtype="Data",
 				insert_after="sumup_amount",
 				read_only=1,
-				hidden=1,
+				hidden=0,
 			),
 			dict(
 				fieldname="sumup_refund_status",
 				label="SumUp Refund Status",
 				fieldtype="Select",
-				options="PENDING\nSUCCESSFUL\nFAILED",
+				options="\nPENDING\nSUCCESSFUL\nFAILED",
 				insert_after="sumup_currency",
 				read_only=1,
-				hidden=1,
+				hidden=0,
 			),
 			dict(
 				fieldname="sumup_refund_amount",
@@ -93,7 +99,7 @@ def create_custom_fields_for_erpnext():
 				options="currency",
 				insert_after="sumup_refund_status",
 				read_only=1,
-				hidden=1,
+				hidden=0,
 			),
 		],
 	}
