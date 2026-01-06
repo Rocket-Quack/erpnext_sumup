@@ -18,7 +18,7 @@ In the event of a refund or return, the amount will also be automatically refund
 
 | ERPNext | Frappe | Support Status |
 |---------|--------|----------------|
-| v16 Beta | v16 Beta | Coming soon |
+| v16 Beta | v16 Beta | Testing... |
 | v15 | v15 | ✅ Supported  |
 
 ## Installation (Frappe Cloud)
