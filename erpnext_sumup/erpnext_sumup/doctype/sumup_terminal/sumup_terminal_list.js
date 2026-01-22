@@ -275,6 +275,26 @@ const show_recovery_message = (result) => {
 	});
 };
 
+const ensure_sumup_enabled = (listview) => {
+	if (listview && typeof listview.sumup_enabled === "boolean") {
+		if (!listview.sumup_enabled) {
+			frappe.msgprint(__("SumUp is disabled in settings."));
+		}
+		return Promise.resolve(listview.sumup_enabled);
+	}
+
+	return frappe.db.get_value("SumUp Settings", "SumUp Settings", "enabled").then((response) => {
+		const enabled = !!cint(response.message && response.message.enabled);
+		if (listview) {
+			listview.sumup_enabled = enabled;
+		}
+		if (!enabled) {
+			frappe.msgprint(__("SumUp is disabled in settings."));
+		}
+		return enabled;
+	});
+};
+
 const run_recovery_sync = (listview) => {
 	frappe.confirm(__("Fetch readers from SumUp and sync local terminals?"), () => {
 		frappe.call({
@@ -297,24 +317,30 @@ const remove_selected_terminals = (listview) => {
 		return;
 	}
 
-	frappe.confirm(
-		__("Remove {0} terminal(s) from SumUp and delete locally?", [terminal_names.length]),
-		() => {
-			frappe.call({
-				method: "erpnext_sumup.erpnext_sumup.doctype.sumup_terminal.sumup_terminal.remove_terminals",
-				args: {
-					terminal_names,
-				},
-				freeze: true,
-				freeze_message: __("Removing terminals..."),
-				callback: (response) => {
-					const result = response.message || {};
-					listview.refresh();
-					show_status_message(result);
-				},
-			});
+	ensure_sumup_enabled(listview).then((enabled) => {
+		if (!enabled) {
+			return;
 		}
-	);
+
+		frappe.confirm(
+			__("Remove {0} terminal(s) from SumUp and delete locally?", [terminal_names.length]),
+			() => {
+				frappe.call({
+					method: "erpnext_sumup.erpnext_sumup.doctype.sumup_terminal.sumup_terminal.remove_terminals",
+					args: {
+						terminal_names,
+					},
+					freeze: true,
+					freeze_message: __("Removing terminals..."),
+					callback: (response) => {
+						const result = response.message || {};
+						listview.refresh();
+						show_status_message(result);
+					},
+				});
+			}
+		);
+	});
 };
 
 const force_remove_selected_terminals = (listview) => {
@@ -350,6 +376,7 @@ frappe.listview_settings["SumUp Terminal"] = {
 	add_fields: ["connection_status", "online_status", "activity_status"],
 	onload(listview) {
 		listview.sumup_debug_enabled = false;
+		listview.sumup_enabled = undefined;
 		const refresh_action = () => {
 			const terminal_names = get_selected_terminal_names(listview);
 			refresh_terminal_statuses(listview, terminal_names.length ? terminal_names : null);
@@ -374,6 +401,9 @@ frappe.listview_settings["SumUp Terminal"] = {
 
 		listview.page.clear_actions_menu();
 		listview.page.add_actions_menu_item(__("Remove from SumUp"), () => {
+			remove_selected_terminals(listview);
+		});
+		listview.page.add_inner_button(__("Remove from SumUp"), () => {
 			remove_selected_terminals(listview);
 		});
 
