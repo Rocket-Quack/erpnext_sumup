@@ -143,7 +143,7 @@ The name SumUp is used only to describe technical compatibility with the respect
 
 ## Third-Party
 
-This app uses the Python package `sumup` v0.0.20 (tag v0.0.20). See `THIRD_PARTY_NOTICE.md`.
+This app uses the Python package `sumup` v0.0.22 (tag v0.0.22). See `THIRD_PARTY_NOTICE.md`.
 
 ## License
 

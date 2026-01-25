@@ -8,7 +8,7 @@ requires-python = ">=3.14"
 readme = "README.md"
 dynamic = ["version"]
 dependencies = [
-    "sumup==0.0.20",
+    "sumup==0.0.22",
 ]
 
 [build-system]
