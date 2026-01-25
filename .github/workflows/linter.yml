@@ -3,6 +3,10 @@ name: Linters
 
 on:
   pull_request:
+    branches:
+      - develop
+      - version-16
+      - version-15
   workflow_dispatch:
 
 permissions:
@@ -13,16 +17,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  linter:
-    name: 'Frappe Linter'
+  linter_v16:
+    if: ${{ (github.event_name == 'pull_request' && (github.base_ref == 'develop' || github.base_ref == 'version-16')) || (github.event_name != 'pull_request' && (github.ref_name == 'develop' || github.ref_name == 'version-16')) }}
+    name: 'Frappe Linter (v16)'
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
 
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.14'
           cache: pip
       - uses: pre-commit/action@v3.0.0
 
@@ -34,14 +38,36 @@ jobs:
           pip install semgrep
           semgrep ci --config ./frappe-semgrep-rules/rules --config r/python.lang.correctness
 
-  deps-vulnerable-check:
-    name: 'Vulnerable Dependency Check'
+  linter_v15:
+    if: ${{ (github.event_name == 'pull_request' && github.base_ref == 'version-15') || (github.event_name != 'pull_request' && github.ref_name == 'version-15') }}
+    name: 'Frappe Linter (v15)'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - uses: pre-commit/action@v3.0.0
+
+      - name: Download Semgrep rules
+        run: git clone --depth 1 https://github.com/frappe/semgrep-rules.git frappe-semgrep-rules
+
+      - name: Run Semgrep rules
+        run: |
+          pip install semgrep
+          semgrep ci --config ./frappe-semgrep-rules/rules --config r/python.lang.correctness
+
+  deps_v16:
+    if: ${{ (github.event_name == 'pull_request' && (github.base_ref == 'develop' || github.base_ref == 'version-16')) || (github.event_name != 'pull_request' && (github.ref_name == 'develop' || github.ref_name == 'version-16')) }}
+    name: 'Vulnerable Dependency Check (v16)'
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.14'
 
       - uses: actions/checkout@v4
 
@@ -53,6 +79,33 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
             ${{ runner.os }}-
+
+      - name: Install and run pip-audit
+        run: |
+          pip install pip-audit
+          cd ${GITHUB_WORKSPACE}
+          pip-audit --desc on .
+
+  deps_v15:
+    if: ${{ (github.event_name == 'pull_request' && github.base_ref == 'version-15') || (github.event_name != 'pull_request' && github.ref_name == 'version-15') }}
+    name: 'Vulnerable Dependency Check (v15)'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/checkout@v4
+
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/*requirements.txt', '**/pyproject.toml', '**/setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            ${{ runner.os }}-pip-
 
       - name: Install and run pip-audit
         run: |
