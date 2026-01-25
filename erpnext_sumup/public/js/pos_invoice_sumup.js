@@ -407,6 +407,7 @@
 	const sumup_show_dialog = async (frm, pos, original_submit) => {
 		const dialog = new frappe.ui.Dialog({
 			title: __("SumUp Payment"),
+			static: true,
 			fields: [
 				{
 					fieldname: "sumup_status_html",
