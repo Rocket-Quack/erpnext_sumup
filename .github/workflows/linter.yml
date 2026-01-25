@@ -3,6 +3,9 @@ name: Linters
 
 on:
   pull_request:
+    branches:
+      - develop
+      - version-15
   workflow_dispatch:
 
 permissions:
@@ -14,15 +17,25 @@ concurrency:
 
 jobs:
   linter:
-    name: 'Frappe Linter'
+    if: ${{ github.event_name == 'pull_request' && (github.base_ref == matrix.branch || github.ref_name == matrix.branch) }}
+    name: 'Frappe Linter (${{ matrix.name }})'
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: v16
+            branch: develop
+            python: "3.14"
+          - name: v15
+            branch: version-15
+            python: "3.12"
 
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: ${{ matrix.python }}
           cache: pip
       - uses: pre-commit/action@v3.0.0
 
@@ -35,13 +48,24 @@ jobs:
           semgrep ci --config ./frappe-semgrep-rules/rules --config r/python.lang.correctness
 
   deps-vulnerable-check:
-    name: 'Vulnerable Dependency Check'
+    if: ${{ github.event_name == 'pull_request' && (github.base_ref == matrix.branch || github.ref_name == matrix.branch) }}
+    name: 'Vulnerable Dependency Check (${{ matrix.name }})'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: v16
+            branch: develop
+            python: "3.14"
+          - name: v15
+            branch: version-15
+            python: "3.12"
 
     steps:
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: ${{ matrix.python }}
 
       - uses: actions/checkout@v4
 
