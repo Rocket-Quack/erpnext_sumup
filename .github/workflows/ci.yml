@@ -5,10 +5,12 @@ on:
   push:
     branches:
       - develop
+      - version-16
       - version-15
   pull_request:
     branches:
       - develop
+      - version-16
       - version-15
 
 concurrency:
@@ -25,6 +27,12 @@ jobs:
         include:
           - name: v16
             branch: develop
+            python: "3.14"
+            node: 24
+            frappe_branch: version-16
+            erpnext_branch: version-16
+          - name: v16
+            branch: version-16
             python: "3.14"
             node: 24
             frappe_branch: version-16
