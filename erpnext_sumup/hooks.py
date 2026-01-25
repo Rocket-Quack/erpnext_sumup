@@ -27,15 +27,14 @@ fixtures = [
 
 
 # Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "erpnext_sumup",
-# 		"logo": "/assets/erpnext_sumup/logo.png",
-# 		"title": "ERPNext SumUp",
-# 		"route": "/erpnext_sumup",
-# 		"has_permission": "erpnext_sumup.api.permission.has_app_permission"
-# 	}
-# ]
+add_to_apps_screen = [
+	{
+		"name": "erpnext_sumup",
+		"logo": "/assets/erpnext_sumup/logo.png",
+		"title": "ERPNext SumUp",
+		"route": "/app/sumup-integration",
+	}
+]
 
 # Includes in <head>
 # ------------------
