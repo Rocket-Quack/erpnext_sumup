@@ -4,11 +4,11 @@ authors = [
     { name = "RocketQuackIT", email = "contact@rocketquack.eu"}
 ]
 description = "SumUp Integration für ERPNext"
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 readme = "README.md"
 dynamic = ["version"]
 dependencies = [
-    "sumup==0.0.20",
+    "sumup==0.0.22",
 ]
 
 [build-system]
@@ -20,7 +20,7 @@ build-backend = "flit_core.buildapi"
 # package_name = "~=1.1.0"
 
 [tool.bench.frappe-dependencies]
-frappe = ">=15.0.0-dev <16.0.0-dev"
+frappe = ">=15.0.0-dev,<16.0.0-dev"
 
 [tool.ruff]
 line-length = 110

@@ -18,7 +18,7 @@ In the event of a refund or return, the amount will also be automatically refund
 
 | ERPNext | Frappe | Support Status |
 |---------|--------|----------------|
-| v16 Beta | v16 Beta | Testing... |
+| v16 Beta | v16 Beta | ✅ Supported |
 | v15 | v15 | ✅ Supported  |
 
 ## Installation (Frappe Cloud)
@@ -37,7 +37,7 @@ The app can be installed directly via Frappe Cloud:
 Once ERPNext is installed, add the app to your bench environment:
 
 ```bash
-bench get-app https://github.com/Rocket-Quack/erpnext_sumup.git --branch version-15
+bench get-app https://github.com/Rocket-Quack/erpnext_sumup.git --branch version-16
 ```
 
 Install requirements:
@@ -143,7 +143,7 @@ The name SumUp is used only to describe technical compatibility with the respect
 
 ## Third-Party
 
-This app uses the Python package `sumup` v0.0.20 (tag v0.0.20). See `THIRD_PARTY_NOTICE.md`.
+This app uses the Python package `sumup` v0.0.22 (tag v0.0.22). See `THIRD_PARTY_NOTICE.md`.
 
 ## License
 
